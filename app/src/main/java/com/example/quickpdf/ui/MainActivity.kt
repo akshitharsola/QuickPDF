@@ -2,6 +2,7 @@ package com.example.quickpdf.ui
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.view.Menu
@@ -69,6 +70,23 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            PermissionUtil.REQUEST_STORAGE_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    openFilePicker()
+                } else {
+                    showPermissionDeniedDialog()
+                }
+            }
+        }
+    }
+
     private fun setupToolbar() {
         setSupportActionBar(binding.toolbar)
     }
@@ -131,7 +149,14 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.storage_permission_title)
             .setMessage(R.string.storage_permission_message)
             .setPositiveButton(R.string.grant_permission) { _, _ ->
-                PermissionUtil.requestStoragePermission(this)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    val intent = PermissionUtil.getStoragePermissionIntent(this)
+                    if (intent != null) {
+                        permissionLauncher.launch(intent)
+                    }
+                } else {
+                    PermissionUtil.requestStoragePermission(this)
+                }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

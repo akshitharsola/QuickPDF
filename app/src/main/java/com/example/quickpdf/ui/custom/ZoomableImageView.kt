@@ -9,9 +9,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import androidx.appcompat.widget.AppCompatImageView
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.sqrt
 
 class ZoomableImageView @JvmOverloads constructor(
     context: Context,
@@ -101,7 +99,7 @@ class ZoomableImageView @JvmOverloads constructor(
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             val scaleFactor = detector.scaleFactor
             currentScale *= scaleFactor
-            currentScale = max(minScale, min(currentScale, maxScale))
+            currentScale = Math.max(minScale, Math.min(currentScale, maxScale))
             
             matrix.postScale(scaleFactor, scaleFactor, detector.focusX, detector.focusY)
             checkAndSetMatrix()
@@ -134,11 +132,11 @@ class ZoomableImageView @JvmOverloads constructor(
         
         // Constrain scale
         if (scaleX < minScale || scaleY < minScale) {
-            val scale = minScale / min(scaleX, scaleY)
+            val scale = minScale / Math.min(scaleX, scaleY)
             matrix.postScale(scale, scale)
             currentScale = minScale
         } else if (scaleX > maxScale || scaleY > maxScale) {
-            val scale = maxScale / max(scaleX, scaleY)
+            val scale = maxScale / Math.max(scaleX, scaleY)
             matrix.postScale(scale, scale)
             currentScale = maxScale
         }
@@ -181,7 +179,7 @@ class ZoomableImageView @JvmOverloads constructor(
     private fun spacing(event: MotionEvent): Float {
         val x = event.getX(0) - event.getX(1)
         val y = event.getY(0) - event.getY(1)
-        return kotlin.math.sqrt((x * x + y * y).toDouble()).toFloat()
+        return sqrt((x * x + y * y).toDouble()).toFloat()
     }
 
     private fun midPoint(point: PointF, event: MotionEvent) {
