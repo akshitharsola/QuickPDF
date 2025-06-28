@@ -122,6 +122,13 @@ app/src/main/java/com/example/quickpdf/
 - **Local Storage Only**: All data stored locally on device
 - **Secure File Access**: Uses Android's Storage Access Framework
 
+## Contributors
+
+This project was developed collaboratively:
+
+- **[Akshith Arsola](https://github.com/akshitharsola)** - Project Lead & Developer
+- **[Claude AI](https://claude.ai/code)** - AI Development Assistant & Code Generation
+
 ## Contributing
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/new-feature`)
