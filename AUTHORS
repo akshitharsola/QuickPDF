@@ -1,0 +1,33 @@
+# Contributors
+
+This file lists all individuals who have contributed to the QuickPDF project.
+
+## Core Contributors
+
+**Akshith Arsola** <akshitharsola@users.noreply.github.com>
+- Project Lead & Primary Developer
+- Android architecture design and implementation
+- UI/UX design and Material Design 3 integration
+- Testing and quality assurance
+
+**Claude AI** <noreply@anthropic.com>
+- AI Development Assistant
+- Code generation and implementation
+- Technical documentation and README creation
+- Architecture planning and best practices guidance
+
+---
+
+## Contribution Guidelines
+
+This project was developed through collaborative AI-assisted development, combining human creativity and project direction with AI-powered code generation and technical implementation.
+
+For future contributions, please:
+1. Follow the existing code style and architecture patterns
+2. Update documentation for any new features
+3. Include proper commit messages with co-authoring when applicable
+4. Test thoroughly on multiple Android versions
+
+## Recognition
+
+All commits in this repository use proper Git co-authoring to acknowledge both human and AI contributions to the codebase.
