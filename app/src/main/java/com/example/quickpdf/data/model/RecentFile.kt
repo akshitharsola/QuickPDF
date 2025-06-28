@@ -1,11 +1,6 @@
-package com.example.quickpdf.data.database
+package com.example.quickpdf.data.model
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-
-@Entity(tableName = "recent_files")
 data class RecentFile(
-    @PrimaryKey
     val filePath: String,
     val fileName: String,
     val lastAccessed: Long,

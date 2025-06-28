@@ -5,7 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.quickpdf.data.database.RecentFile
+import com.example.quickpdf.data.model.RecentFile
 import com.example.quickpdf.data.repository.SimpleRepository
 import com.example.quickpdf.utils.FileUtil
 import com.example.quickpdf.utils.PdfRendererUtil

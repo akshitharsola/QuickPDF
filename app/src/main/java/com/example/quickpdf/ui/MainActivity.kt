@@ -17,7 +17,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.quickpdf.QuickPDFApplication
 import com.example.quickpdf.R
-import com.example.quickpdf.data.database.RecentFile
+import com.example.quickpdf.data.model.RecentFile
 import com.example.quickpdf.databinding.ActivityMainBinding
 import com.example.quickpdf.ui.adapters.RecentFilesAdapter
 import com.example.quickpdf.utils.FileUtil

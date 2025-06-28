@@ -2,8 +2,8 @@ package com.example.quickpdf.data.repository
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.example.quickpdf.data.database.Bookmark
-import com.example.quickpdf.data.database.RecentFile
+import com.example.quickpdf.data.model.Bookmark
+import com.example.quickpdf.data.model.RecentFile
 
 /**
  * Simple in-memory repository for initial testing

@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.quickpdf.data.database.Bookmark
+import com.example.quickpdf.data.model.Bookmark
 import com.example.quickpdf.data.repository.SimpleRepository
 import kotlinx.coroutines.launch
 
