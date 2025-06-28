@@ -17,24 +17,89 @@ class PdfRendererUtil {
     private var pdfRenderer: PdfRenderer? = null
     private var parcelFileDescriptor: ParcelFileDescriptor? = null
     private var currentPage: PdfRenderer.Page? = null
+    private var tempFile: File? = null
     
     suspend fun openPdf(context: Context, uri: Uri): Boolean = withContext(Dispatchers.IO) {
         try {
             closePdf()
+            android.util.Log.d("PdfRendererUtil", "Attempting to open PDF from URI: $uri")
             
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val tempFile = File.createTempFile("temp_pdf", ".pdf", context.cacheDir)
-            
-            inputStream?.use { input ->
-                FileOutputStream(tempFile).use { output ->
-                    input.copyTo(output)
+            // Try direct ParcelFileDescriptor first (more efficient)
+            try {
+                parcelFileDescriptor = context.contentResolver.openFileDescriptor(uri, "r")
+                if (parcelFileDescriptor != null) {
+                    pdfRenderer = PdfRenderer(parcelFileDescriptor!!)
+                    android.util.Log.d("PdfRendererUtil", "PDF opened directly with ${pdfRenderer?.pageCount ?: 0} pages")
+                    return@withContext true
                 }
+            } catch (e: Exception) {
+                android.util.Log.w("PdfRendererUtil", "Direct file descriptor failed, trying temporary file approach", e)
             }
             
-            parcelFileDescriptor = ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY)
+            // Fallback to temporary file approach
+            val inputStream = context.contentResolver.openInputStream(uri)
+            if (inputStream == null) {
+                android.util.Log.e("PdfRendererUtil", "Cannot open input stream for URI: $uri")
+                return@withContext false
+            }
+            
+            // Get the file size first to check if it's reasonable
+            val fileSize = try {
+                inputStream.available().toLong()
+            } catch (e: Exception) {
+                android.util.Log.w("PdfRendererUtil", "Cannot determine file size", e)
+                -1L
+            }
+            
+            if (fileSize > 100 * 1024 * 1024) { // 100MB limit
+                android.util.Log.e("PdfRendererUtil", "File too large: $fileSize bytes")
+                inputStream.close()
+                return@withContext false
+            }
+            
+            android.util.Log.d("PdfRendererUtil", "Creating temporary file for PDF (size: $fileSize bytes)")
+            tempFile = File.createTempFile("quickpdf_", ".pdf", context.cacheDir)
+            
+            try {
+                inputStream.use { input ->
+                    FileOutputStream(tempFile).use { output ->
+                        val buffer = ByteArray(8192)
+                        var bytesRead: Int
+                        var totalBytes = 0L
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            output.write(buffer, 0, bytesRead)
+                            totalBytes += bytesRead
+                        }
+                        android.util.Log.d("PdfRendererUtil", "Copied $totalBytes bytes to temporary file")
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("PdfRendererUtil", "Error copying file to temp location", e)
+                tempFile?.delete()
+                tempFile = null
+                return@withContext false
+            }
+            
+            if (tempFile?.exists() != true || tempFile?.length() == 0L) {
+                android.util.Log.e("PdfRendererUtil", "Temporary file is empty or doesn't exist")
+                tempFile?.delete()
+                tempFile = null
+                return@withContext false
+            }
+            
+            android.util.Log.d("PdfRendererUtil", "Temporary file created successfully: ${tempFile?.length()} bytes")
+            
+            parcelFileDescriptor = ParcelFileDescriptor.open(tempFile!!, ParcelFileDescriptor.MODE_READ_ONLY)
             pdfRenderer = PdfRenderer(parcelFileDescriptor!!)
+            android.util.Log.d("PdfRendererUtil", "PDF opened successfully with ${pdfRenderer?.pageCount ?: 0} pages")
+            
+            // Store temp file reference for cleanup later (don't delete immediately)
+            // The PdfRenderer needs the file to remain accessible
+            android.util.Log.d("PdfRendererUtil", "Temporary file will be cleaned up when PDF is closed")
+            
             true
         } catch (e: Exception) {
+            android.util.Log.e("PdfRendererUtil", "Error opening PDF: ${e.javaClass.simpleName}: ${e.message}", e)
             false
         }
     }
@@ -121,8 +186,17 @@ class PdfRendererUtil {
             pdfRenderer = null
             parcelFileDescriptor?.close()
             parcelFileDescriptor = null
+            
+            // Clean up temporary file if it exists
+            tempFile?.let { file ->
+                if (file.exists()) {
+                    val deleted = file.delete()
+                    android.util.Log.d("PdfRendererUtil", "Temporary file cleanup: ${if (deleted) "success" else "failed"}")
+                }
+                tempFile = null
+            }
         } catch (e: IOException) {
-            // Ignore
+            android.util.Log.w("PdfRendererUtil", "Error during PDF cleanup", e)
         }
     }
 }

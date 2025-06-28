@@ -177,19 +177,46 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openFilePicker() {
-        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-            addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/pdf"
+        try {
+            android.util.Log.d("MainActivity", "Opening file picker")
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/pdf"
+                // Add extra flags for better compatibility
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+            }
+            filePickerLauncher.launch(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error opening file picker", e)
+            Toast.makeText(this, "Error opening file picker: ${e.message}", Toast.LENGTH_LONG).show()
         }
-        filePickerLauncher.launch(intent)
     }
 
     private fun handleSelectedFile(uri: Uri) {
+        android.util.Log.d("MainActivity", "Handling selected file: $uri")
+        
+        try {
+            // Grant persistent URI permission for future access
+            contentResolver.takePersistableUriPermission(
+                uri, 
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            android.util.Log.d("MainActivity", "Granted persistent URI permission")
+        } catch (e: Exception) {
+            android.util.Log.w("MainActivity", "Could not grant persistent URI permission", e)
+            // Continue anyway - file might still be accessible
+        }
+        
         val fileName = FileUtil.getFileName(this, uri)
+        android.util.Log.d("MainActivity", "File name: $fileName")
+        
         if (fileName != null && FileUtil.isPdfFile(fileName)) {
+            android.util.Log.d("MainActivity", "Valid PDF file, adding to recent files")
             mainViewModel.addRecentFile(this, uri)
             openPdfViewer(uri)
         } else {
+            android.util.Log.w("MainActivity", "Invalid PDF file: $fileName")
             Toast.makeText(this, R.string.invalid_pdf, Toast.LENGTH_SHORT).show()
         }
     }
@@ -217,10 +244,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openPdfViewer(uri: Uri) {
-        val intent = Intent(this, PdfViewerActivity::class.java).apply {
-            data = uri
+        try {
+            android.util.Log.d("MainActivity", "Opening PDF viewer with URI: $uri")
+            val intent = Intent(this, PdfViewerActivity::class.java).apply {
+                data = uri
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error opening PDF viewer", e)
+            Toast.makeText(this, "Error opening PDF: ${e.message}", Toast.LENGTH_LONG).show()
         }
-        startActivity(intent)
     }
 
     private fun showRecentFileOptions(recentFile: RecentFile) {

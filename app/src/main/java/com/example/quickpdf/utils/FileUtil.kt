@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -12,34 +13,72 @@ object FileUtil {
     
     fun getFileName(context: Context, uri: Uri): String? {
         return try {
+            android.util.Log.d("FileUtil", "Getting file name for URI: $uri")
+            
             val cursor = context.contentResolver.query(uri, null, null, null, null)
             cursor?.use {
                 if (it.moveToFirst()) {
-                    val displayNameIndex = it.getColumnIndex("_display_name")
+                    // Try standard OpenableColumns.DISPLAY_NAME first
+                    val displayNameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                     if (displayNameIndex != -1) {
-                        return it.getString(displayNameIndex)
+                        val fileName = it.getString(displayNameIndex)
+                        android.util.Log.d("FileUtil", "Found display name: $fileName")
+                        if (!fileName.isNullOrEmpty()) {
+                            return fileName
+                        }
+                    }
+                    
+                    // Fallback to legacy column name
+                    val legacyIndex = it.getColumnIndex("_display_name")
+                    if (legacyIndex != -1) {
+                        val fileName = it.getString(legacyIndex)
+                        android.util.Log.d("FileUtil", "Found legacy display name: $fileName")
+                        if (!fileName.isNullOrEmpty()) {
+                            return fileName
+                        }
                     }
                 }
             }
-            uri.lastPathSegment
+            
+            // Extract from URI path as last resort
+            val pathSegment = uri.lastPathSegment
+            android.util.Log.d("FileUtil", "Using path segment as filename: $pathSegment")
+            pathSegment
         } catch (e: Exception) {
+            android.util.Log.e("FileUtil", "Error getting filename", e)
             uri.lastPathSegment
         }
     }
     
     fun getFileSize(context: Context, uri: Uri): Long {
         return try {
+            android.util.Log.d("FileUtil", "Getting file size for URI: $uri")
+            
             val cursor = context.contentResolver.query(uri, null, null, null, null)
             cursor?.use {
                 if (it.moveToFirst()) {
-                    val sizeIndex = it.getColumnIndex("_size")
+                    // Try standard OpenableColumns.SIZE first
+                    val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE)
                     if (sizeIndex != -1) {
-                        return it.getLong(sizeIndex)
+                        val size = it.getLong(sizeIndex)
+                        android.util.Log.d("FileUtil", "Found file size: $size bytes")
+                        return size
+                    }
+                    
+                    // Fallback to legacy column name
+                    val legacyIndex = it.getColumnIndex("_size")
+                    if (legacyIndex != -1) {
+                        val size = it.getLong(legacyIndex)
+                        android.util.Log.d("FileUtil", "Found legacy file size: $size bytes")
+                        return size
                     }
                 }
             }
+            
+            android.util.Log.w("FileUtil", "Could not determine file size, returning 0")
             0L
         } catch (e: Exception) {
+            android.util.Log.e("FileUtil", "Error getting file size", e)
             0L
         }
     }

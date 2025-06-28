@@ -1,28 +1,14 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
     <!-- Dark theme. -->
-    <style name="Theme.QuickPDF" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/md_theme_dark_primary</item>
-        <item name="colorPrimaryVariant">@color/md_theme_dark_primary</item>
-        <item name="colorOnPrimary">@color/md_theme_dark_onPrimary</item>
-        <!-- Secondary colors -->
-        <item name="colorSecondary">@color/md_theme_dark_secondary</item>
-        <item name="colorSecondaryVariant">@color/md_theme_dark_secondary</item>
-        <item name="colorOnSecondary">@color/md_theme_dark_onSecondary</item>
-        <!-- Surface colors -->
-        <item name="colorSurface">@color/md_theme_dark_surface</item>
-        <item name="colorOnSurface">@color/md_theme_dark_onSurface</item>
-        <!-- Background colors -->
-        <item name="android:colorBackground">@color/md_theme_dark_background</item>
-        <item name="colorOnBackground">@color/md_theme_dark_onBackground</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
+    <style name="Theme.QuickPDF" parent="Theme.AppCompat.DayNight.DarkActionBar">
+        <item name="colorPrimary">#D0BCFF</item>
+        <item name="colorPrimaryDark">#4F378B</item>
+        <item name="colorAccent">#6750A4</item>
     </style>
     
-    <style name="Theme.QuickPDF.NoActionBar">
+    <style name="Theme.QuickPDF.NoActionBar" parent="Theme.QuickPDF">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:windowFullscreen">false</item>
     </style>
 </resources>
