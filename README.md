@@ -126,7 +126,7 @@ app/src/main/java/com/example/quickpdf/
 
 This project was developed collaboratively:
 
-- **[Akshith Arsola](https://github.com/akshitharsola)** - Project Lead & Developer
+- **[Akshit Harsola](https://github.com/akshitharsola)** - Project Lead & Developer
 - **[Claude AI](https://claude.ai/code)** - AI Development Assistant & Code Generation
 
 ## Contributing
