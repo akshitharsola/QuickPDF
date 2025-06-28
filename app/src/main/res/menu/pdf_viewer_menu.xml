@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_search"
+        android:icon="@drawable/ic_search"
+        android:title="@string/search"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_bookmark"
+        android:icon="@drawable/ic_bookmark_border"
+        android:title="@string/bookmark"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_night_mode"
+        android:icon="@drawable/ic_brightness_6"
+        android:title="@string/night_mode"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_view_mode"
+        android:icon="@drawable/ic_zoom_out_map"
+        android:title="View Mode"
+        app:showAsAction="never">
+        
+        <menu>
+            <item
+                android:id="@+id/action_fit_width"
+                android:title="@string/fit_width" />
+            <item
+                android:id="@+id/action_fit_page"
+                android:title="@string/fit_page" />
+            <item
+                android:id="@+id/action_original_size"
+                android:title="@string/original_size" />
+        </menu>
+        
+    </item>
+
+    <item
+        android:id="@+id/action_bookmarks"
+        android:icon="@drawable/ic_bookmarks"
+        android:title="@string/bookmarks"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_thumbnails"
+        android:icon="@drawable/ic_grid_view"
+        android:title="@string/thumbnails"
+        app:showAsAction="never" />
+
+</menu>

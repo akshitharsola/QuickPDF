@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="Display">
+
+        <SwitchPreferenceCompat
+            android:key="night_mode_default"
+            android:title="Default Night Mode"
+            android:summary="Use night mode by default when opening PDFs"
+            android:defaultValue="false" />
+
+        <ListPreference
+            android:key="default_view_mode"
+            android:title="Default View Mode"
+            android:summary="Choose the default viewing mode for PDFs"
+            android:entries="@array/view_mode_entries"
+            android:entryValues="@array/view_mode_values"
+            android:defaultValue="fit_width" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Performance">
+
+        <SwitchPreferenceCompat
+            android:key="high_quality_rendering"
+            android:title="High Quality Rendering"
+            android:summary="Use higher quality rendering (may use more memory)"
+            android:defaultValue="true" />
+
+        <SeekBarPreference
+            android:key="cache_size"
+            android:title="Page Cache Size"
+            android:summary="Number of pages to keep in memory"
+            android:max="10"
+            android:defaultValue="3"
+            app:min="1" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Storage">
+
+        <Preference
+            android:key="clear_recent_files"
+            android:title="Clear Recent Files"
+            android:summary="Remove all files from recent files list" />
+
+        <Preference
+            android:key="clear_bookmarks"
+            android:title="Clear All Bookmarks"
+            android:summary="Remove all saved bookmarks" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="About">
+
+        <Preference
+            android:key="version"
+            android:title="Version"
+            android:summary="1.0.0"
+            android:selectable="false" />
+
+        <Preference
+            android:key="open_source"
+            android:title="Open Source Licenses"
+            android:summary="View licenses for open source libraries used" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
