@@ -20,10 +20,9 @@ object PermissionUtil {
     fun hasStoragePermission(context: Context): Boolean {
         return when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-                ContextCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.READ_MEDIA_DOCUMENTS
-                ) == PackageManager.PERMISSION_GRANTED
+                // For Android 13+, we'll use file picker which doesn't require explicit permissions
+                // Document picker uses Storage Access Framework which handles permissions internally
+                true
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
                 Environment.isExternalStorageManager()
@@ -52,23 +51,15 @@ object PermissionUtil {
     }
     
     fun requestStoragePermission(activity: Activity) {
-        when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-                ActivityCompat.requestPermissions(
-                    activity,
-                    arrayOf(Manifest.permission.READ_MEDIA_DOCUMENTS),
-                    REQUEST_STORAGE_PERMISSION
-                )
-            }
-            Build.VERSION.SDK_INT < Build.VERSION_CODES.R -> {
-                ActivityCompat.requestPermissions(
-                    activity,
-                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                    REQUEST_STORAGE_PERMISSION
-                )
-            }
-            // For Android 11-12, we'll use the storage manager permission
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            ActivityCompat.requestPermissions(
+                activity,
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
+                REQUEST_STORAGE_PERMISSION
+            )
         }
+        // For Android 11+ we handle this through the storage manager intent in MainActivity
+        // For Android 13+ we rely on Storage Access Framework which doesn't need explicit permissions
     }
     
     fun shouldShowStoragePermissionRationale(activity: Activity): Boolean {
