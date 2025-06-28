@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
+import com.example.quickpdf.ui.custom.ZoomableImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.lifecycle.LifecycleOwner
@@ -50,7 +50,7 @@ class PdfPageAdapter(
 
     inner class PdfPageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         
-        private val imageViewPage: ImageView = itemView.findViewById(R.id.imageViewPage)
+        private val imageViewPage: ZoomableImageView = itemView.findViewById(R.id.imageViewPage)
         private val progressBar: ProgressBar = itemView.findViewById(R.id.progressBar)
         private val textViewError: TextView = itemView.findViewById(R.id.textViewError)
 
@@ -118,6 +118,7 @@ class PdfPageAdapter(
 
         fun cleanup() {
             imageViewPage.setImageBitmap(null)
+            imageViewPage.resetZoom()
         }
     }
 

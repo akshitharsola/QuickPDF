@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:fitsSystemWindows="true"
     tools:context=".ui.PdfViewerActivity">
 
     <androidx.appcompat.widget.Toolbar
@@ -13,6 +14,7 @@
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        android:elevation="4dp"
         app:title="PDF Viewer" />
 
     <FrameLayout
@@ -46,18 +48,22 @@
     <LinearLayout
         android:id="@+id/layoutPageControls"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="56dp"
         android:orientation="horizontal"
         android:padding="8dp"
         android:gravity="center"
-        android:background="?attr/colorPrimary">
+        android:background="?attr/colorPrimary"
+        android:elevation="8dp">
 
         <Button
             android:id="@+id/buttonPreviousPage"
+            style="@style/Widget.AppCompat.Button.Borderless"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Previous"
-            android:layout_marginEnd="8dp" />
+            android:textColor="@android:color/white"
+            android:layout_marginEnd="8dp"
+            android:minWidth="80dp" />
 
         <TextView
             android:id="@+id/textViewPageIndicator"
@@ -67,14 +73,18 @@
             android:gravity="center"
             android:text="Page 1 of 1"
             android:textColor="@android:color/white"
-            android:textSize="14sp" />
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/buttonNextPage"
+            style="@style/Widget.AppCompat.Button.Borderless"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Next"
-            android:layout_marginStart="8dp" />
+            android:textColor="@android:color/white"
+            android:layout_marginStart="8dp"
+            android:minWidth="80dp" />
 
     </LinearLayout>
 
