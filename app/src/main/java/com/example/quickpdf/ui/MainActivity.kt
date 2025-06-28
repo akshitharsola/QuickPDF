@@ -55,14 +55,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        try {
+            binding = ActivityMainBinding.inflate(layoutInflater)
+            setContentView(binding.root)
 
-        setupToolbar()
-        setupRecyclerView()
-        setupClickListeners()
-        observeViewModel()
-        handleIntent(intent)
+            setupToolbar()
+            setupRecyclerView()
+            setupClickListeners()
+            observeViewModel()
+            handleIntent(intent)
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error in onCreate", e)
+            // Show basic error message to user
+            Toast.makeText(this, "Error starting app: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

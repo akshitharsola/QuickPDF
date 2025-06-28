@@ -6,12 +6,12 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickpdf.data.database.RecentFile
-import com.example.quickpdf.data.repository.PdfRepository
+import com.example.quickpdf.data.repository.SimpleRepository
 import com.example.quickpdf.utils.FileUtil
 import com.example.quickpdf.utils.PdfRendererUtil
 import kotlinx.coroutines.launch
 
-class MainViewModel(private val repository: PdfRepository) : ViewModel() {
+class MainViewModel(private val repository: SimpleRepository) : ViewModel() {
     
     val recentFiles: LiveData<List<RecentFile>> = repository.getAllRecentFiles()
     

@@ -5,10 +5,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.quickpdf.data.database.Bookmark
-import com.example.quickpdf.data.repository.PdfRepository
+import com.example.quickpdf.data.repository.SimpleRepository
 import kotlinx.coroutines.launch
 
-class PdfViewerViewModel(private val repository: PdfRepository) : ViewModel() {
+class PdfViewerViewModel(private val repository: SimpleRepository) : ViewModel() {
     
     private val _currentPage = MutableLiveData<Int>()
     val currentPage: LiveData<Int> = _currentPage

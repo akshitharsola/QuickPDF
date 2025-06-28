@@ -1,11 +1,22 @@
 package com.example.quickpdf
 
 import android.app.Application
-import com.example.quickpdf.data.database.QuickPDFDatabase
-import com.example.quickpdf.data.repository.PdfRepository
+import android.util.Log
+import com.example.quickpdf.data.repository.SimpleRepository
 
 class QuickPDFApplication : Application() {
     
-    val database by lazy { QuickPDFDatabase.getDatabase(this) }
-    val repository by lazy { PdfRepository(database.recentFileDao(), database.bookmarkDao()) }
+    val repository by lazy { 
+        try {
+            SimpleRepository()
+        } catch (e: Exception) {
+            Log.e("QuickPDFApplication", "Error initializing repository", e)
+            SimpleRepository() // Fallback
+        }
+    }
+    
+    override fun onCreate() {
+        super.onCreate()
+        Log.d("QuickPDFApplication", "Application started successfully")
+    }
 }

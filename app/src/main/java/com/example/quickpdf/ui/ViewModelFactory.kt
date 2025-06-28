@@ -2,9 +2,9 @@ package com.example.quickpdf.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.quickpdf.data.repository.PdfRepository
+import com.example.quickpdf.data.repository.SimpleRepository
 
-class ViewModelFactory(private val repository: PdfRepository) : ViewModelProvider.Factory {
+class ViewModelFactory(private val repository: SimpleRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
