@@ -167,7 +167,12 @@ object FileUtil {
                             if (id.startsWith("raw:")) {
                                 id.replaceFirst("raw:", "")
                             } else {
-                                getDataColumn(context, MediaStore.Downloads.EXTERNAL_CONTENT_URI, "_id=?", arrayOf(id))
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                    getDataColumn(context, MediaStore.Downloads.EXTERNAL_CONTENT_URI, "_id=?", arrayOf(id))
+                                } else {
+                                    // Fallback for older Android versions
+                                    "/storage/emulated/0/Download/$id"
+                                }
                             }
                         }
                         isMediaDocument(uri) -> {

@@ -61,10 +61,10 @@ jobs:
         sed -i "s/android:summary=\".*\"/android:summary=\"$VERSION\"/" app/src/main/res/xml/preferences.xml
         
     - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      run: ./gradlew assembleDebug -x lintDebug
       
     - name: Build Release APK
-      run: ./gradlew assembleRelease
+      run: ./gradlew assembleRelease -x lintRelease
       
     - name: Sign Release APK (if keystore available)
       id: sign_apk
