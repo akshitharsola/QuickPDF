@@ -42,6 +42,67 @@
             android:text="Error loading PDF"
             android:textSize="16sp"
             android:visibility="gone" />
+            
+        <!-- Zoom Controls Overlay -->
+        <LinearLayout
+            android:id="@+id/layoutZoomControls"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="16dp"
+            android:orientation="vertical"
+            android:background="@drawable/zoom_controls_background"
+            android:padding="8dp"
+            android:elevation="8dp"
+            android:visibility="gone">
+            
+            <TextView
+                android:id="@+id/textViewZoomLevel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="100%"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorPrimary"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="4dp" />
+            
+            <Button
+                android:id="@+id/buttonZoomIn"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="+"
+                android:textSize="18sp"
+                android:textColor="?android:attr/textColorPrimary" />
+            
+            <Button
+                android:id="@+id/buttonZoomOut"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="−"
+                android:textSize="18sp"
+                android:textColor="?android:attr/textColorPrimary" />
+            
+            <Button
+                android:id="@+id/buttonFitToWidth"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="⟷"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary" />
+            
+            <Button
+                android:id="@+id/buttonFitToScreen"
+                style="@style/Widget.AppCompat.Button.Borderless"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="⌧"
+                android:textSize="16sp"
+                android:textColor="?android:attr/textColorPrimary" />
+                
+        </LinearLayout>
 
     </FrameLayout>
 
@@ -64,6 +125,16 @@
             android:textColor="@android:color/white"
             android:layout_marginEnd="8dp"
             android:minWidth="80dp" />
+            
+        <Button
+            android:id="@+id/buttonToggleZoomControls"
+            style="@style/Widget.AppCompat.Button.Borderless"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:text="⊞"
+            android:textSize="16sp"
+            android:textColor="@android:color/white"
+            android:layout_marginEnd="8dp" />
 
         <TextView
             android:id="@+id/textViewPageIndicator"
@@ -76,6 +147,7 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
+            
         <Button
             android:id="@+id/buttonNextPage"
             style="@style/Widget.AppCompat.Button.Borderless"

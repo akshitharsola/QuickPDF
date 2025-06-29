@@ -211,7 +211,7 @@ class MainActivity : AppCompatActivity() {
         val fileName = FileUtil.getFileName(this, uri)
         android.util.Log.d("MainActivity", "File name: $fileName")
         
-        if (fileName != null && FileUtil.isPdfFile(fileName)) {
+        if (FileUtil.isPdfFile(this, uri)) {
             android.util.Log.d("MainActivity", "Valid PDF file, adding to recent files")
             mainViewModel.addRecentFile(this, uri)
             openPdfViewer(uri)
@@ -223,23 +223,52 @@ class MainActivity : AppCompatActivity() {
 
     private fun openPdfFile(recentFile: RecentFile) {
         try {
-            val file = File(recentFile.filePath)
-            if (file.exists()) {
-                mainViewModel.updateLastAccessed(recentFile.filePath)
-                val uri = Uri.fromFile(file)
-                openPdfViewer(uri)
-            } else {
-                Toast.makeText(this, R.string.file_not_found, Toast.LENGTH_SHORT).show()
-                mainViewModel.deleteRecentFile(recentFile)
+            android.util.Log.d("MainActivity", "Opening recent file: ${recentFile.filePath}")
+            
+            val uri = Uri.parse(recentFile.filePath)
+            
+            // First check if this is a content URI and if we can access it
+            if (uri.scheme == "content") {
+                try {
+                    // Test if we can still access this content URI
+                    contentResolver.openInputStream(uri)?.use { 
+                        // If we can open it, the URI is still valid
+                        android.util.Log.d("MainActivity", "Content URI is still accessible")
+                        mainViewModel.updateLastAccessed(recentFile.filePath)
+                        openPdfViewer(uri)
+                        return
+                    }
+                } catch (e: SecurityException) {
+                    android.util.Log.w("MainActivity", "Content URI no longer accessible due to permission loss", e)
+                    Toast.makeText(this, "File access permission expired. Please reopen the file.", Toast.LENGTH_LONG).show()
+                    mainViewModel.deleteRecentFile(recentFile)
+                    return
+                } catch (e: Exception) {
+                    android.util.Log.w("MainActivity", "Content URI access failed", e)
+                }
             }
+            
+            // Fallback: try as file path if it looks like a file path
+            if (uri.scheme == "file" || !recentFile.filePath.startsWith("content://")) {
+                val file = File(recentFile.filePath)
+                if (file.exists() && file.canRead()) {
+                    android.util.Log.d("MainActivity", "File path is accessible")
+                    mainViewModel.updateLastAccessed(recentFile.filePath)
+                    val fileUri = Uri.fromFile(file)
+                    openPdfViewer(fileUri)
+                    return
+                }
+            }
+            
+            // If we reach here, the file is no longer accessible
+            android.util.Log.w("MainActivity", "File no longer accessible: ${recentFile.filePath}")
+            Toast.makeText(this, R.string.file_not_found, Toast.LENGTH_SHORT).show()
+            mainViewModel.deleteRecentFile(recentFile)
+            
         } catch (e: Exception) {
-            // Try as URI if file path doesn't work
-            try {
-                val uri = Uri.parse(recentFile.filePath)
-                openPdfViewer(uri)
-            } catch (ex: Exception) {
-                Toast.makeText(this, R.string.error_opening_file, Toast.LENGTH_SHORT).show()
-            }
+            android.util.Log.e("MainActivity", "Error opening recent file", e)
+            Toast.makeText(this, R.string.error_opening_file, Toast.LENGTH_SHORT).show()
+            // Don't delete the file here - it might be a temporary error
         }
     }
 

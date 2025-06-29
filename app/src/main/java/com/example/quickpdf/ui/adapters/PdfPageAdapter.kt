@@ -4,7 +4,7 @@ import android.graphics.Bitmap
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.example.quickpdf.ui.custom.ZoomableImageView
+import com.example.quickpdf.ui.custom.ProfessionalZoomableImageView
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.lifecycle.LifecycleOwner
@@ -25,6 +25,10 @@ class PdfPageAdapter(
 
     private var pageCount = 0
     private val pageCache = mutableMapOf<Int, Bitmap?>()
+    private val viewHolders = mutableMapOf<Int, PdfPageViewHolder>()
+    
+    // Callback for zoom level changes
+    var onZoomChanged: ((Float) -> Unit)? = null
 
     fun setPageCount(count: Int) {
         pageCount = count
@@ -40,17 +44,21 @@ class PdfPageAdapter(
     }
 
     override fun onBindViewHolder(holder: PdfPageViewHolder, position: Int) {
+        viewHolders[position] = holder
         holder.bind(position)
     }
 
     override fun onViewRecycled(holder: PdfPageViewHolder) {
         super.onViewRecycled(holder)
+        // Remove from viewHolders map
+        val position = viewHolders.entries.find { it.value == holder }?.key
+        position?.let { viewHolders.remove(it) }
         holder.cleanup()
     }
 
     inner class PdfPageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         
-        private val imageViewPage: ZoomableImageView = itemView.findViewById(R.id.imageViewPage)
+        val imageViewPage: ProfessionalZoomableImageView = itemView.findViewById(R.id.imageViewPage)
         private val progressBar: ProgressBar = itemView.findViewById(R.id.progressBar)
         private val textViewError: TextView = itemView.findViewById(R.id.textViewError)
 
@@ -108,6 +116,11 @@ class PdfPageAdapter(
             progressBar.visibility = View.GONE
             textViewError.visibility = View.GONE
             imageViewPage.setImageBitmap(bitmap)
+            
+            // Set up zoom change callback
+            imageViewPage.onZoomChanged = { zoomLevel ->
+                onZoomChanged?.invoke(zoomLevel)
+            }
         }
 
         private fun showError() {
@@ -118,7 +131,8 @@ class PdfPageAdapter(
 
         fun cleanup() {
             imageViewPage.setImageBitmap(null)
-            imageViewPage.resetZoom()
+            imageViewPage.resetToFitScreen()
+            imageViewPage.onZoomChanged = null
         }
     }
 
@@ -129,9 +143,9 @@ class PdfPageAdapter(
         pageCache.clear()
     }
 
-    fun updateNightMode(isNightMode: Boolean) {
-        // Simple night mode implementation can be added later
-        notifyDataSetChanged()
+    
+    fun getCurrentZoomableView(position: Int): ProfessionalZoomableImageView? {
+        return viewHolders[position]?.imageViewPage
     }
 
     fun updateViewMode() {

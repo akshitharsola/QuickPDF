@@ -6,6 +6,7 @@ import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
@@ -20,88 +21,156 @@ class PdfRendererUtil {
     private var tempFile: File? = null
     
     suspend fun openPdf(context: Context, uri: Uri): Boolean = withContext(Dispatchers.IO) {
-        try {
-            closePdf()
-            android.util.Log.d("PdfRendererUtil", "Attempting to open PDF from URI: $uri")
-            
-            // Try direct ParcelFileDescriptor first (more efficient)
+        // Retry mechanism for PDF opening reliability
+        var lastException: Exception? = null
+        repeat(3) { attempt ->
             try {
-                parcelFileDescriptor = context.contentResolver.openFileDescriptor(uri, "r")
-                if (parcelFileDescriptor != null) {
-                    pdfRenderer = PdfRenderer(parcelFileDescriptor!!)
-                    android.util.Log.d("PdfRendererUtil", "PDF opened directly with ${pdfRenderer?.pageCount ?: 0} pages")
-                    return@withContext true
+                closePdf()
+                android.util.Log.d("PdfRendererUtil", "Attempting to open PDF from URI (attempt ${attempt + 1}): $uri")
+                
+                // Validate URI accessibility first
+                val isAccessible = try {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        stream.available() >= 0
+                    } ?: false
+                } catch (e: Exception) {
+                    android.util.Log.w("PdfRendererUtil", "URI validation failed on attempt ${attempt + 1}", e)
+                    false
                 }
-            } catch (e: Exception) {
-                android.util.Log.w("PdfRendererUtil", "Direct file descriptor failed, trying temporary file approach", e)
-            }
-            
-            // Fallback to temporary file approach
-            val inputStream = context.contentResolver.openInputStream(uri)
-            if (inputStream == null) {
-                android.util.Log.e("PdfRendererUtil", "Cannot open input stream for URI: $uri")
-                return@withContext false
-            }
-            
-            // Get the file size first to check if it's reasonable
-            val fileSize = try {
-                inputStream.available().toLong()
-            } catch (e: Exception) {
-                android.util.Log.w("PdfRendererUtil", "Cannot determine file size", e)
-                -1L
-            }
-            
-            if (fileSize > 100 * 1024 * 1024) { // 100MB limit
-                android.util.Log.e("PdfRendererUtil", "File too large: $fileSize bytes")
-                inputStream.close()
-                return@withContext false
-            }
-            
-            android.util.Log.d("PdfRendererUtil", "Creating temporary file for PDF (size: $fileSize bytes)")
-            tempFile = File.createTempFile("quickpdf_", ".pdf", context.cacheDir)
-            
-            try {
-                inputStream.use { input ->
-                    FileOutputStream(tempFile).use { output ->
-                        val buffer = ByteArray(8192)
-                        var bytesRead: Int
-                        var totalBytes = 0L
-                        while (input.read(buffer).also { bytesRead = it } != -1) {
-                            output.write(buffer, 0, bytesRead)
-                            totalBytes += bytesRead
-                        }
-                        android.util.Log.d("PdfRendererUtil", "Copied $totalBytes bytes to temporary file")
+                
+                if (!isAccessible) {
+                    android.util.Log.w("PdfRendererUtil", "URI not accessible on attempt ${attempt + 1}, retrying...")
+                    if (attempt < 2) {
+                        delay(500L) // Wait before retry
+                        return@repeat
+                    } else {
+                        lastException = Exception("URI not accessible after 3 attempts")
+                        return@repeat
                     }
                 }
+                
+                // Try direct ParcelFileDescriptor first (more efficient)
+                try {
+                    parcelFileDescriptor = context.contentResolver.openFileDescriptor(uri, "r")
+                    if (parcelFileDescriptor != null) {
+                        pdfRenderer = PdfRenderer(parcelFileDescriptor!!)
+                        android.util.Log.d("PdfRendererUtil", "PDF opened directly with ${pdfRenderer?.pageCount ?: 0} pages")
+                        return@withContext true
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("PdfRendererUtil", "Direct file descriptor failed on attempt ${attempt + 1}, trying temporary file approach", e)
+                    lastException = e
+                }
+            
+                // Fallback to temporary file approach
+                val inputStream = context.contentResolver.openInputStream(uri)
+                if (inputStream == null) {
+                    android.util.Log.e("PdfRendererUtil", "Cannot open input stream for URI: $uri on attempt ${attempt + 1}")
+                    lastException = Exception("Cannot open input stream")
+                    if (attempt < 2) {
+                        delay(500L)
+                        return@repeat
+                    } else {
+                        return@repeat
+                    }
+                }
+            
+                // Get the file size first to check if it's reasonable
+                val fileSize = try {
+                    inputStream.available().toLong()
+                } catch (e: Exception) {
+                    android.util.Log.w("PdfRendererUtil", "Cannot determine file size on attempt ${attempt + 1}", e)
+                    -1L
+                }
+                
+                if (fileSize > 100 * 1024 * 1024) { // 100MB limit
+                    android.util.Log.e("PdfRendererUtil", "File too large: $fileSize bytes")
+                    inputStream.close()
+                    lastException = Exception("File too large: $fileSize bytes")
+                    return@repeat
+                }
+            
+                android.util.Log.d("PdfRendererUtil", "Creating temporary file for PDF (size: $fileSize bytes) on attempt ${attempt + 1}")
+                tempFile = File.createTempFile("quickpdf_${System.currentTimeMillis()}_", ".pdf", context.cacheDir)
+                
+                try {
+                    inputStream.use { input ->
+                        FileOutputStream(tempFile).use { output ->
+                            val buffer = ByteArray(16384) // Increased buffer size
+                            var bytesRead: Int
+                            var totalBytes = 0L
+                            while (input.read(buffer).also { bytesRead = it } != -1) {
+                                output.write(buffer, 0, bytesRead)
+                                totalBytes += bytesRead
+                            }
+                            output.flush() // Ensure all data is written
+                            android.util.Log.d("PdfRendererUtil", "Copied $totalBytes bytes to temporary file")
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("PdfRendererUtil", "Error copying file to temp location on attempt ${attempt + 1}", e)
+                    tempFile?.delete()
+                    tempFile = null
+                    lastException = e
+                    if (attempt < 2) {
+                        delay(1000L)
+                        return@repeat
+                    } else {
+                        return@repeat
+                    }
+                }
+            
+                // Verify temporary file integrity
+                if (tempFile?.exists() != true || tempFile?.length() == 0L) {
+                    android.util.Log.e("PdfRendererUtil", "Temporary file is empty or doesn't exist on attempt ${attempt + 1}")
+                    tempFile?.delete()
+                    tempFile = null
+                    lastException = Exception("Temporary file validation failed")
+                    if (attempt < 2) {
+                        delay(1000L)
+                        return@repeat
+                    } else {
+                        return@repeat
+                    }
+                }
+                
+                android.util.Log.d("PdfRendererUtil", "Temporary file created successfully: ${tempFile?.length()} bytes")
+                
+                // Add small delay to ensure file system sync
+                delay(100L)
+                
+                parcelFileDescriptor = ParcelFileDescriptor.open(tempFile!!, ParcelFileDescriptor.MODE_READ_ONLY)
+                pdfRenderer = PdfRenderer(parcelFileDescriptor!!)
+                
+                val pageCount = pdfRenderer?.pageCount ?: 0
+                if (pageCount <= 0) {
+                    android.util.Log.e("PdfRendererUtil", "PDF has no pages on attempt ${attempt + 1}")
+                    lastException = Exception("PDF has no readable pages")
+                    if (attempt < 2) {
+                        closePdf()
+                        delay(1000L)
+                        return@repeat
+                    } else {
+                        return@repeat
+                    }
+                }
+                
+                android.util.Log.d("PdfRendererUtil", "PDF opened successfully with $pageCount pages")
+                return@withContext true
+                
             } catch (e: Exception) {
-                android.util.Log.e("PdfRendererUtil", "Error copying file to temp location", e)
-                tempFile?.delete()
-                tempFile = null
-                return@withContext false
+                android.util.Log.e("PdfRendererUtil", "Error opening PDF on attempt ${attempt + 1}: ${e.javaClass.simpleName}: ${e.message}", e)
+                lastException = e
+                closePdf()
+                if (attempt < 2) {
+                    delay(1000L)
+                }
             }
-            
-            if (tempFile?.exists() != true || tempFile?.length() == 0L) {
-                android.util.Log.e("PdfRendererUtil", "Temporary file is empty or doesn't exist")
-                tempFile?.delete()
-                tempFile = null
-                return@withContext false
-            }
-            
-            android.util.Log.d("PdfRendererUtil", "Temporary file created successfully: ${tempFile?.length()} bytes")
-            
-            parcelFileDescriptor = ParcelFileDescriptor.open(tempFile!!, ParcelFileDescriptor.MODE_READ_ONLY)
-            pdfRenderer = PdfRenderer(parcelFileDescriptor!!)
-            android.util.Log.d("PdfRendererUtil", "PDF opened successfully with ${pdfRenderer?.pageCount ?: 0} pages")
-            
-            // Store temp file reference for cleanup later (don't delete immediately)
-            // The PdfRenderer needs the file to remain accessible
-            android.util.Log.d("PdfRendererUtil", "Temporary file will be cleaned up when PDF is closed")
-            
-            true
-        } catch (e: Exception) {
-            android.util.Log.e("PdfRendererUtil", "Error opening PDF: ${e.javaClass.simpleName}: ${e.message}", e)
-            false
         }
+        
+        // All attempts failed
+        android.util.Log.e("PdfRendererUtil", "Failed to open PDF after 3 attempts. Last error: ${lastException?.message}")
+        return@withContext false
     }
     
     suspend fun openPdf(filePath: String): Boolean = withContext(Dispatchers.IO) {

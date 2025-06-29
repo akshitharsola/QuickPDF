@@ -20,7 +20,8 @@ class MainViewModel(private val repository: SimpleRepository) : ViewModel() {
             try {
                 val fileName = FileUtil.getFileName(context, uri) ?: return@launch
                 val fileSize = FileUtil.getFileSize(context, uri)
-                val filePath = FileUtil.getRealPathFromURI(context, uri) ?: uri.toString()
+                // Store the URI directly for better reliability
+                val filePath = uri.toString()
                 
                 // Try to get page count
                 val pdfRenderer = PdfRendererUtil()

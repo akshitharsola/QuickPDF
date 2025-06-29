@@ -55,6 +55,9 @@ dependencies {
     implementation(libs.androidx.preference.ktx)
     implementation(libs.kotlinx.coroutines.android)
     
+    // PhotoView for professional zoom and pan functionality
+    implementation("com.github.chrisbanes:PhotoView:2.3.0")
+    
     // Room database - temporarily disabled for initial testing
     // implementation(libs.androidx.room.runtime)
     // implementation(libs.androidx.room.ktx)

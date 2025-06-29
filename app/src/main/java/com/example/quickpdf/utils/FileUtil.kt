@@ -110,6 +110,46 @@ object FileUtil {
         return fileName.lowercase(Locale.getDefault()).endsWith(".pdf")
     }
     
+    fun isPdfFile(context: Context, uri: Uri): Boolean {
+        return try {
+            android.util.Log.d("FileUtil", "Checking if URI is PDF: $uri")
+            
+            // First check MIME type
+            val mimeType = context.contentResolver.getType(uri)
+            android.util.Log.d("FileUtil", "MIME type: $mimeType")
+            if (mimeType == "application/pdf") {
+                android.util.Log.d("FileUtil", "Valid PDF MIME type detected")
+                return true
+            }
+            
+            // If MIME type is not available or not PDF, check file content
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                val buffer = ByteArray(4)
+                val bytesRead = inputStream.read(buffer)
+                
+                if (bytesRead >= 4) {
+                    // Check for PDF magic number: %PDF
+                    val headerString = String(buffer, 0, 4, Charsets.UTF_8)
+                    val isPdf = headerString == "%PDF"
+                    android.util.Log.d("FileUtil", "File header check: '$headerString', isPdf: $isPdf")
+                    return isPdf
+                }
+            }
+            
+            // Fallback to filename extension check
+            val fileName = getFileName(context, uri)
+            val result = fileName?.let { isPdfFile(it) } ?: false
+            android.util.Log.d("FileUtil", "Fallback filename check for '$fileName': $result")
+            result
+            
+        } catch (e: Exception) {
+            android.util.Log.e("FileUtil", "Error checking if file is PDF", e)
+            // Fallback to filename check
+            val fileName = getFileName(context, uri)
+            fileName?.let { isPdfFile(it) } ?: false
+        }
+    }
+    
     fun getRealPathFromURI(context: Context, uri: Uri): String? {
         return try {
             when {
