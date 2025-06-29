@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.quickpdf"
+    namespace = "com.quickpdf.reader"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.quickpdf"
+        applicationId = "com.quickpdf.reader"
         minSdk = 24
         targetSdk = 35
         versionCode = 1

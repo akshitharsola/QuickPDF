@@ -1,0 +1,181 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.1)'
+        required: true
+        default: '1.0.1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+          
+    - name: Make gradlew executable
+      run: chmod +x gradlew
+      
+    - name: Extract version from tag
+      id: get_version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Update version in build.gradle.kts
+      run: |
+        VERSION="${{ steps.get_version.outputs.version }}"
+        sed -i "s/versionName = \".*\"/versionName = \"$VERSION\"/" app/build.gradle.kts
+        # Also update version code based on version (e.g., 1.0.1 -> 101)
+        VERSION_CODE=$(echo $VERSION | awk -F. '{printf "%d%02d%02d", $1, $2, $3}')
+        sed -i "s/versionCode = [0-9]*/versionCode = $VERSION_CODE/" app/build.gradle.kts
+        
+    - name: Update version in preferences.xml
+      run: |
+        VERSION="${{ steps.get_version.outputs.version }}"
+        sed -i "s/android:summary=\".*\"/android:summary=\"$VERSION\"/" app/src/main/res/xml/preferences.xml
+        
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+      
+    - name: Build Release APK
+      run: ./gradlew assembleRelease
+      
+    - name: Sign Release APK (if keystore available)
+      id: sign_apk
+      run: |
+        if [[ -n "${{ secrets.KEYSTORE_FILE }}" ]]; then
+          echo "Signing release APK..."
+          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > keystore.jks
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=keystore.jks \
+            -Pandroid.injected.signing.store.password="${{ secrets.KEYSTORE_PASSWORD }}" \
+            -Pandroid.injected.signing.key.alias="${{ secrets.KEY_ALIAS }}" \
+            -Pandroid.injected.signing.key.password="${{ secrets.KEY_PASSWORD }}"
+          echo "signed=true" >> $GITHUB_OUTPUT
+        else
+          echo "No keystore found, using unsigned release APK"
+          echo "signed=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Rename APK files
+      run: |
+        VERSION="${{ steps.get_version.outputs.version }}"
+        mkdir -p release-artifacts
+        
+        # Copy and rename debug APK
+        cp app/build/outputs/apk/debug/app-debug.apk "release-artifacts/QuickPDF-v$VERSION-debug.apk"
+        
+        # Copy and rename release APK
+        if [[ "${{ steps.sign_apk.outputs.signed }}" == "true" ]]; then
+          cp app/build/outputs/apk/release/app-release.apk "release-artifacts/QuickPDF-v$VERSION-release.apk"
+        else
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "release-artifacts/QuickPDF-v$VERSION-release-unsigned.apk"
+        fi
+        
+    - name: Generate Release Notes
+      id: release_notes
+      run: |
+        VERSION="${{ steps.get_version.outputs.version }}"
+        NOTES_FILE="release-notes.md"
+        
+        cat > $NOTES_FILE << EOF
+        ## QuickPDF v$VERSION
+        
+        ### 📱 What's New
+        - Latest version of QuickPDF with improvements and bug fixes
+        - Professional zoom functionality with PhotoView library
+        - Enhanced file management and recent files handling
+        - Improved user interface and settings
+        
+        ### 📥 Download Instructions
+        1. Download the APK file below
+        2. Enable "Install from Unknown Sources" in your Android settings
+        3. Install the APK file
+        4. Grant necessary permissions when prompted
+        
+        ### 🔧 Technical Details
+        - **Package Name**: com.quickpdf.reader
+        - **Min Android Version**: 7.0 (API 24)
+        - **Target Android Version**: 15 (API 35)
+        - **Architecture**: Universal (arm64-v8a, armeabi-v7a, x86, x86_64)
+        
+        ### 📋 Changelog
+        See [PROJECT_STATUS.md] and [Project_Status_Part2.md] for detailed feature list.
+        
+        ### 🐛 Known Issues
+        - Search functionality not yet implemented
+        - Bookmark system temporarily simplified
+        
+        ---
+        
+        **Note**: This is an unsigned APK build. For production use, a signed version is recommended.
+        EOF
+        
+        echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
+        
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        release_name: QuickPDF v${{ steps.get_version.outputs.version }}
+        body_path: ${{ steps.release_notes.outputs.notes_file }}
+        draft: false
+        prerelease: false
+        
+    - name: Upload Debug APK
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: release-artifacts/QuickPDF-v${{ steps.get_version.outputs.version }}-debug.apk
+        asset_name: QuickPDF-v${{ steps.get_version.outputs.version }}-debug.apk
+        asset_content_type: application/vnd.android.package-archive
+        
+    - name: Upload Release APK
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: release-artifacts/QuickPDF-v${{ steps.get_version.outputs.version }}-release*.apk
+        asset_name: QuickPDF-v${{ steps.get_version.outputs.version }}-release.apk
+        asset_content_type: application/vnd.android.package-archive
+        
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: QuickPDF-v${{ steps.get_version.outputs.version }}-artifacts
+        path: |
+          release-artifacts/
+          app/build/outputs/apk/
+        retention-days: 30

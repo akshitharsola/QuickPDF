@@ -39,6 +39,21 @@
     <string name="bookmark_removed">Bookmark removed</string>
     <string name="enter_bookmark_title">Enter bookmark title</string>
     
+    <!-- Updates -->
+    <string name="check_for_updates">Check for Updates</string>
+    <string name="auto_check_updates">Automatic Update Check</string>
+    <string name="auto_check_updates_summary">Automatically check for updates on app startup</string>
+    <string name="checking_for_updates">Checking for updates…</string>
+    <string name="update_available">Update Available</string>
+    <string name="update_available_message">A new version of QuickPDF is available: %1$s</string>
+    <string name="no_updates_available">No Updates Available</string>
+    <string name="no_updates_message">You are running the latest version of QuickPDF</string>
+    <string name="update_check_failed">Update Check Failed</string>
+    <string name="update_check_failed_message">Unable to check for updates. Please check your internet connection.</string>
+    <string name="download_update">Download Update</string>
+    <string name="update_later">Update Later</string>
+    <string name="current_version">Current Version: %1$s</string>
+    
     <!-- General -->
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>

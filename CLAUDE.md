@@ -42,10 +42,10 @@ QuickPDF is an Android application built with Kotlin using the modern Android de
 - **app/src/main/AndroidManifest.xml**: Application manifest (currently minimal, no activities defined)
 
 ### Source Code Organization
-- **Package**: `com.example.quickpdf`
-- **Main Source**: `app/src/main/java/com/example/quickpdf/`
-- **Test Source**: `app/src/test/java/com/example/quickpdf/`
-- **Instrumented Tests**: `app/src/androidTest/java/com/example/quickpdf/`
+- **Package**: `com.quickpdf.reader`
+- **Main Source**: `app/src/main/java/com/example/quickpdf/` (directory structure unchanged)
+- **Test Source**: `app/src/test/java/com/example/quickpdf/` (directory structure unchanged)
+- **Instrumented Tests**: `app/src/androidTest/java/com/example/quickpdf/` (directory structure unchanged)
 
 ### Target Configuration
 - **Min SDK**: 24 (Android 7.0)

@@ -52,6 +52,21 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="Updates">
+
+        <SwitchPreferenceCompat
+            android:key="auto_check_updates"
+            android:title="@string/auto_check_updates"
+            android:summary="@string/auto_check_updates_summary"
+            android:defaultValue="true" />
+
+        <Preference
+            android:key="check_for_updates"
+            android:title="@string/check_for_updates"
+            android:summary="Check for the latest version of QuickPDF" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="About">
 
         <Preference
