@@ -75,15 +75,15 @@ jobs:
       run: |
         if [[ -n "${{ secrets.KEYSTORE_FILE }}" ]]; then
           echo "🔐 Signing release APK with production keystore..."
-          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > keystore.jks
+          echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > app/keystore.jks
           
           # Verify keystore was decoded properly
-          if [[ -f keystore.jks ]]; then
+          if [[ -f app/keystore.jks ]]; then
             echo "✅ Keystore decoded successfully"
             
             # Build signed release APK
             ./gradlew assembleRelease -x lintRelease \
-              -Pandroid.injected.signing.store.file=keystore.jks \
+              -Pandroid.injected.signing.store.file=app/keystore.jks \
               -Pandroid.injected.signing.store.password="${{ secrets.KEYSTORE_PASSWORD }}" \
               -Pandroid.injected.signing.key.alias="${{ secrets.KEY_ALIAS }}" \
               -Pandroid.injected.signing.key.password="${{ secrets.KEY_PASSWORD }}"
