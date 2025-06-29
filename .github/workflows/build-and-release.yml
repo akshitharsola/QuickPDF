@@ -81,9 +81,26 @@ jobs:
           if [[ -f keystore.jks ]]; then
             echo "✅ Keystore decoded successfully"
             
-            # Build signed release APK with absolute path
+            # Debug: Check keystore info
             KEYSTORE_PATH="$(pwd)/keystore.jks"
             echo "🔍 Using keystore at: $KEYSTORE_PATH"
+            echo "🔍 Keystore file size: $(stat -c%s keystore.jks) bytes"
+            
+            # Test keystore access with provided credentials
+            echo "🧪 Testing keystore access..."
+            if keytool -list -keystore keystore.jks -storepass "${{ secrets.KEYSTORE_PASSWORD }}" >/dev/null 2>&1; then
+              echo "✅ Keystore access successful"
+            else
+              echo "❌ Keystore access failed - checking with default password"
+              if keytool -list -keystore keystore.jks -storepass quickpdf123 >/dev/null 2>&1; then
+                echo "✅ Keystore works with 'quickpdf123' password"
+                echo "❌ GitHub secret KEYSTORE_PASSWORD may be incorrect"
+              else
+                echo "❌ Keystore appears corrupted or password unknown"
+              fi
+            fi
+            
+            # Build signed release APK with absolute path
             ./gradlew assembleRelease -x lintRelease \
               -Pandroid.injected.signing.store.file="$KEYSTORE_PATH" \
               -Pandroid.injected.signing.store.password="${{ secrets.KEYSTORE_PASSWORD }}" \
