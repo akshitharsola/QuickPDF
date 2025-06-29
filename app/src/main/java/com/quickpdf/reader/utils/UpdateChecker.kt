@@ -19,9 +19,8 @@ class UpdateChecker(private val context: Context) {
 
     companion object {
         private const val TAG = "UpdateChecker"
-        // TODO: Replace YOUR_USERNAME with your actual GitHub username
-        // Example: "https://api.github.com/repos/akshitharsola/QuickPDF/releases/latest"
-        private const val GITHUB_API_URL = "https://api.github.com/repos/YOUR_USERNAME/QuickPDF/releases/latest"
+        // GitHub API endpoint for checking latest releases
+        private const val GITHUB_API_URL = "https://api.github.com/repos/akshitharsola/QuickPDF/releases/latest"
         private const val CONNECTION_TIMEOUT = 10000 // 10 seconds
         private const val READ_TIMEOUT = 15000 // 15 seconds
     }
