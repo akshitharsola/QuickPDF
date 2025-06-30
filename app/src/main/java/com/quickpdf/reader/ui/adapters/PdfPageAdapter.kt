@@ -27,8 +27,8 @@ class PdfPageAdapter(
     private val pageCache = mutableMapOf<Int, Bitmap?>()
     private val viewHolders = mutableMapOf<Int, PdfPageViewHolder>()
     
-    // Callback for zoom level changes
-    var onZoomChanged: ((Float) -> Unit)? = null
+    // Callback for single tap
+    var onSingleTap: (() -> Unit)? = null
 
     fun setPageCount(count: Int) {
         pageCount = count
@@ -117,9 +117,9 @@ class PdfPageAdapter(
             textViewError.visibility = View.GONE
             imageViewPage.setImageBitmap(bitmap)
             
-            // Set up zoom change callback
-            imageViewPage.onZoomChanged = { zoomLevel ->
-                onZoomChanged?.invoke(zoomLevel)
+            // Set up single tap callback
+            imageViewPage.onSingleTap = {
+                onSingleTap?.invoke()
             }
         }
 
@@ -132,7 +132,7 @@ class PdfPageAdapter(
         fun cleanup() {
             imageViewPage.setImageBitmap(null)
             imageViewPage.resetToFitScreen()
-            imageViewPage.onZoomChanged = null
+            imageViewPage.onSingleTap = null
         }
     }
 

@@ -196,7 +196,7 @@ class UpdateChecker(private val context: Context) {
     /**
      * Set the GitHub repository URL for update checking
      */
-    fun setRepositoryUrl(username: String, repositoryName: String) {
+    fun setRepositoryUrl(@Suppress("UNUSED_PARAMETER") username: String, @Suppress("UNUSED_PARAMETER") repositoryName: String) {
         // This would be implemented if you want to make the repository configurable
         // For now, it's hardcoded in the companion object
     }

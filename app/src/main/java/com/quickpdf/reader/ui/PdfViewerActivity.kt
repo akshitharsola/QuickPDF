@@ -17,7 +17,6 @@ import com.quickpdf.reader.ui.custom.ProfessionalZoomableImageView
 import com.quickpdf.reader.utils.FileUtil
 import com.quickpdf.reader.utils.PdfRendererUtil
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 class PdfViewerActivity : AppCompatActivity() {
 
@@ -30,18 +29,23 @@ class PdfViewerActivity : AppCompatActivity() {
     }
 
     private var fileName: String = ""
-    private var zoomControlsVisible = false
-    private val zoomControlsHandler = Handler(Looper.getMainLooper())
-    private var zoomControlsHideRunnable: Runnable? = null
+    private var toolbarVisible = true
+    private val toolbarHandler = Handler(Looper.getMainLooper())
+    private var toolbarHideRunnable: Runnable? = null
+    private var savedCurrentPage = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityPdfViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        
+        // Restore saved page position on orientation change
+        savedCurrentPage = savedInstanceState?.getInt("current_page", 0) ?: 0
 
         setupToolbar()
         setupPdfRenderer()
         setupViewPager()
+        setupGestureDetector()
         setupClickListeners()
         setupZoomControls()
         observeViewModel()
@@ -56,6 +60,8 @@ class PdfViewerActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener {
             finish()
         }
+        
+        // Controls will be initially visible, auto-hide after PDF loads
     }
 
     private fun setupPdfRenderer() {
@@ -65,10 +71,10 @@ class PdfViewerActivity : AppCompatActivity() {
     private fun setupViewPager() {
         pdfPageAdapter = PdfPageAdapter(pdfRenderer, this, pdfViewerViewModel)
         
-        // Set up zoom change callback
-        pdfPageAdapter.onZoomChanged = { zoomLevel ->
-            updateZoomLevelDisplay()
-            showZoomControlsTemporarily()
+        // Set up single tap callback for toolbar toggle
+        pdfPageAdapter.onSingleTap = {
+            android.util.Log.d("PdfViewerActivity", "Single tap detected from page")
+            toggleToolbar()
         }
         
         binding.viewPager.apply {
@@ -96,64 +102,32 @@ class PdfViewerActivity : AppCompatActivity() {
                     super.onPageSelected(position)
                     pdfViewerViewModel.setCurrentPage(position)
                     updatePageIndicator(position + 1)
-                    // Update zoom level display for new page
-                    if (zoomControlsVisible) {
-                        updateZoomLevelDisplay()
-                    }
+                    // Save current page for orientation changes
+                    savedCurrentPage = position
                 }
             })
         }
     }
 
+    private fun setupGestureDetector() {
+        // No longer needed - tap detection is handled by individual page views
+        // ViewPager2 will handle swipes naturally
+    }
+    
     private fun setupClickListeners() {
-        binding.buttonPreviousPage.setOnClickListener {
-            val currentItem = binding.viewPager.currentItem
-            if (currentItem > 0) {
-                binding.viewPager.currentItem = currentItem - 1
-            }
-        }
-
-        binding.buttonNextPage.setOnClickListener {
-            val currentItem = binding.viewPager.currentItem
-            if (currentItem < pdfPageAdapter.itemCount - 1) {
-                binding.viewPager.currentItem = currentItem + 1
-            }
-        }
-        
-        binding.buttonToggleZoomControls.setOnClickListener {
-            toggleZoomControls()
-        }
+        // Controls overlay will be handled by tap gestures
     }
     
     private fun setupZoomControls() {
-        binding.buttonZoomIn.setOnClickListener {
-            getCurrentZoomableView()?.zoomIn()
-            showZoomControlsTemporarily()
-        }
-        
-        binding.buttonZoomOut.setOnClickListener {
-            getCurrentZoomableView()?.zoomOut()
-            showZoomControlsTemporarily()
-        }
-        
-        binding.buttonFitToWidth.setOnClickListener {
-            getCurrentZoomableView()?.setZoomMode(ProfessionalZoomableImageView.ZoomMode.FIT_TO_WIDTH)
-            showZoomControlsTemporarily()
-        }
-        
-        binding.buttonFitToScreen.setOnClickListener {
-            getCurrentZoomableView()?.setZoomMode(ProfessionalZoomableImageView.ZoomMode.FIT_TO_SCREEN)
-            showZoomControlsTemporarily()
-        }
+        // Zoom controls removed - using native pinch-to-zoom
     }
 
     private fun observeViewModel() {
         pdfViewerViewModel.currentPage.observe(this) { currentPage ->
             updatePageIndicator(currentPage + 1)
-            updateNavigationButtons(currentPage)
         }
 
-        pdfViewerViewModel.totalPages.observe(this) { totalPages ->
+        pdfViewerViewModel.totalPages.observe(this) { _ ->
             updatePageIndicator(pdfViewerViewModel.currentPage.value?.plus(1) ?: 1)
         }
     }
@@ -179,7 +153,7 @@ class PdfViewerActivity : AppCompatActivity() {
             try {
                 binding.progressBar.visibility = View.VISIBLE
                 binding.textViewError.visibility = View.GONE
-                binding.layoutPageControls.visibility = View.GONE
+                binding.toolbar.visibility = View.VISIBLE
                 
                 android.util.Log.d("PdfViewerActivity", "Attempting to open PDF...")
                 
@@ -220,9 +194,19 @@ class PdfViewerActivity : AppCompatActivity() {
                     pdfPageAdapter.setPageCount(pageCount)
                     
                     binding.progressBar.visibility = View.GONE
-                    binding.layoutPageControls.visibility = View.VISIBLE
+                    binding.toolbar.visibility = View.VISIBLE
                     
                     updatePageIndicator(1)
+                    
+                    // Restore saved page position
+                    if (savedCurrentPage > 0 && savedCurrentPage < pageCount) {
+                        binding.viewPager.setCurrentItem(savedCurrentPage, false)
+                        updatePageIndicator(savedCurrentPage + 1)
+                        android.util.Log.d("PdfViewerActivity", "Restored to page: ${savedCurrentPage + 1}")
+                    }
+                    
+                    // Start with toolbar visible, then auto-hide after delay
+                    showToolbarTemporarily()
                     android.util.Log.d("PdfViewerActivity", "PDF viewer setup completed successfully")
                 } else {
                     android.util.Log.e("PdfViewerActivity", "Failed to open PDF file")
@@ -247,16 +231,10 @@ class PdfViewerActivity : AppCompatActivity() {
         }
     }
 
-    private fun updatePageIndicator(currentPage: Int) {
-        val totalPages = pdfViewerViewModel.totalPages.value ?: 0
-        binding.textViewPageIndicator.text = "Page $currentPage of $totalPages"
+    private fun updatePageIndicator(@Suppress("UNUSED_PARAMETER") currentPage: Int) {
+        // Page indicator removed - no UI update needed
     }
 
-    private fun updateNavigationButtons(currentPage: Int) {
-        val totalPages = pdfViewerViewModel.totalPages.value ?: 0
-        binding.buttonPreviousPage.isEnabled = currentPage > 0
-        binding.buttonNextPage.isEnabled = currentPage < totalPages - 1
-    }
 
     private fun showError(message: String) {
         binding.progressBar.visibility = View.GONE
@@ -265,48 +243,46 @@ class PdfViewerActivity : AppCompatActivity() {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
     
-    private fun toggleZoomControls() {
-        zoomControlsVisible = !zoomControlsVisible
-        binding.layoutZoomControls.visibility = if (zoomControlsVisible) View.VISIBLE else View.GONE
-        
-        if (zoomControlsVisible) {
-            updateZoomLevelDisplay()
-            showZoomControlsTemporarily()
+    private fun toggleToolbar() {
+        android.util.Log.d("PdfViewerActivity", "toggleToolbar called, current toolbarVisible: $toolbarVisible")
+        if (toolbarVisible) {
+            hideToolbar()
         } else {
-            zoomControlsHideRunnable?.let { zoomControlsHandler.removeCallbacks(it) }
+            showToolbarTemporarily()
         }
     }
     
-    private fun showZoomControlsTemporarily() {
-        if (!zoomControlsVisible) {
-            binding.layoutZoomControls.visibility = View.VISIBLE
-            zoomControlsVisible = true
-        }
-        
-        updateZoomLevelDisplay()
-        
+    private fun showToolbarTemporarily() {
+        showToolbar()
+        hideToolbarAfterDelay()
+    }
+    
+    private fun showToolbar() {
+        android.util.Log.d("PdfViewerActivity", "showToolbar called")
+        binding.toolbar.visibility = View.VISIBLE
+        toolbarVisible = true
+        android.util.Log.d("PdfViewerActivity", "Toolbar shown")
+    }
+    
+    private fun hideToolbar() {
+        android.util.Log.d("PdfViewerActivity", "hideToolbar called")
+        binding.toolbar.visibility = View.GONE
+        toolbarVisible = false
+        toolbarHideRunnable?.let { toolbarHandler.removeCallbacks(it) }
+        android.util.Log.d("PdfViewerActivity", "Toolbar hidden")
+    }
+    
+    private fun hideToolbarAfterDelay() {
         // Remove any existing hide callback
-        zoomControlsHideRunnable?.let { zoomControlsHandler.removeCallbacks(it) }
+        toolbarHideRunnable?.let { toolbarHandler.removeCallbacks(it) }
         
         // Schedule hide after 3 seconds
-        zoomControlsHideRunnable = Runnable {
-            binding.layoutZoomControls.visibility = View.GONE
-            zoomControlsVisible = false
+        toolbarHideRunnable = Runnable {
+            hideToolbar()
         }
-        zoomControlsHandler.postDelayed(zoomControlsHideRunnable!!, 3000)
+        toolbarHandler.postDelayed(toolbarHideRunnable!!, 3000)
     }
     
-    private fun updateZoomLevelDisplay() {
-        getCurrentZoomableView()?.let { zoomView ->
-            val zoomPercent = (zoomView.getCurrentScale() * 100).roundToInt()
-            binding.textViewZoomLevel.text = "$zoomPercent%"
-            
-            // Update zoom button states based on current scale
-            val currentScale = zoomView.getCurrentScale()
-            binding.buttonZoomIn.isEnabled = currentScale < zoomView.getMaxScale() - 0.01f
-            binding.buttonZoomOut.isEnabled = currentScale > zoomView.getMinScale() + 0.01f
-        }
-    }
     
     private fun getCurrentZoomableView(): ProfessionalZoomableImageView? {
         return try {
@@ -319,9 +295,15 @@ class PdfViewerActivity : AppCompatActivity() {
     }
     
     
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt("current_page", binding.viewPager.currentItem)
+        android.util.Log.d("PdfViewerActivity", "Saved current page: ${binding.viewPager.currentItem}")
+    }
+    
     override fun onDestroy() {
         super.onDestroy()
-        zoomControlsHideRunnable?.let { zoomControlsHandler.removeCallbacks(it) }
+        toolbarHideRunnable?.let { toolbarHandler.removeCallbacks(it) }
         pdfPageAdapter.clearCache()
         pdfRenderer.closePdf()
     }

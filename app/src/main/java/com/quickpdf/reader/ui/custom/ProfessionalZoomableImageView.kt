@@ -15,6 +15,9 @@ class ProfessionalZoomableImageView @JvmOverloads constructor(
     // Callback for zoom level changes
     var onZoomChanged: ((Float) -> Unit)? = null
     
+    // Callback for single tap
+    var onSingleTap: (() -> Unit)? = null
+    
     // Zoom level constants
     private var fitToWidthScale = 1.0f
     private var originalScale = 1.0f
@@ -34,34 +37,45 @@ class ProfessionalZoomableImageView @JvmOverloads constructor(
         })
         
         // Enable all gestures
-        setAllowParentInterceptOnEdge(false)
+        setAllowParentInterceptOnEdge(true)
         
-        // Advanced parent scroll interference prevention
+        // Optimized parent scroll interference prevention
+        var lastZoomState = false
         setOnMatrixChangeListener {
-            // Completely disable parent scrolling when we're zoomed in or panning
-            val isZoomedIn = scale > minimumScale + 0.05f
+            // More robust zoom detection - only disable when significantly zoomed beyond original
+            val zoomThreshold = originalScale * 1.15f // 15% beyond original scale
+            val isZoomedIn = scale > zoomThreshold
             
-            // Request parent to not intercept touch events when zoomed
-            parent?.requestDisallowInterceptTouchEvent(isZoomedIn)
-            
-            // Also disable grandparent (ViewPager2) if needed
-            var currentParent = parent
-            while (currentParent != null && isZoomedIn) {
-                if (currentParent is androidx.viewpager2.widget.ViewPager2) {
-                    currentParent.isUserInputEnabled = !isZoomedIn
-                    break
+            // Only update if zoom state actually changed to reduce interference
+            if (isZoomedIn != lastZoomState) {
+                lastZoomState = isZoomedIn
+                android.util.Log.d("ProfessionalZoomableImageView", "Zoom state changed - isZoomedIn: $isZoomedIn, scale: $scale, threshold: $zoomThreshold")
+                
+                // Request parent to not intercept touch events when zoomed
+                parent?.requestDisallowInterceptTouchEvent(isZoomedIn)
+                
+                // Control ViewPager2 user input based on zoom state
+                var currentParent = parent
+                while (currentParent != null) {
+                    if (currentParent is androidx.viewpager2.widget.ViewPager2) {
+                        currentParent.isUserInputEnabled = !isZoomedIn
+                        android.util.Log.d("ProfessionalZoomableImageView", "ViewPager2 input enabled: ${!isZoomedIn}")
+                        break
+                    }
+                    currentParent = currentParent.parent as? android.view.ViewGroup
                 }
-                currentParent = currentParent.parent as? android.view.ViewGroup
             }
         }
         
         // Handle touch events to provide immediate feedback
         setOnPhotoTapListener { _, _, _ ->
-            // Single tap - do nothing, let parent handle
+            // Single tap on photo - notify parent
+            onSingleTap?.invoke()
         }
         
         setOnOutsidePhotoTapListener {
-            // Tap outside photo - could be used for hiding controls
+            // Tap outside photo - also notify parent
+            onSingleTap?.invoke()
         }
     }
 
@@ -69,7 +83,8 @@ class ProfessionalZoomableImageView @JvmOverloads constructor(
         super.setImageDrawable(drawable)
         post {
             calculateScales()
-            resetToFitScreen()
+            // Use fit-to-screen as default for better experience in all orientations
+            setZoomMode(ZoomMode.FIT_TO_SCREEN)
         }
     }
     
@@ -100,6 +115,17 @@ class ProfessionalZoomableImageView @JvmOverloads constructor(
         post {
             scale = originalScale
             onZoomChanged?.invoke(scale)
+            
+            // Ensure ViewPager2 is re-enabled when resetting zoom
+            var currentParent = parent
+            while (currentParent != null) {
+                if (currentParent is androidx.viewpager2.widget.ViewPager2) {
+                    currentParent.isUserInputEnabled = true
+                    android.util.Log.d("ProfessionalZoomableImageView", "ViewPager2 re-enabled after zoom reset")
+                    break
+                }
+                currentParent = currentParent.parent as? android.view.ViewGroup
+            }
         }
     }
     
@@ -113,6 +139,19 @@ class ProfessionalZoomableImageView @JvmOverloads constructor(
         post {
             setScale(targetScale, true)
             onZoomChanged?.invoke(targetScale)
+            
+            // Ensure ViewPager2 is properly enabled for fit modes
+            if (mode == ZoomMode.FIT_TO_SCREEN || mode == ZoomMode.FIT_TO_WIDTH) {
+                var currentParent = parent
+                while (currentParent != null) {
+                    if (currentParent is androidx.viewpager2.widget.ViewPager2) {
+                        currentParent.isUserInputEnabled = true
+                        android.util.Log.d("ProfessionalZoomableImageView", "ViewPager2 enabled for zoom mode: $mode")
+                        break
+                    }
+                    currentParent = currentParent.parent as? android.view.ViewGroup
+                }
+            }
         }
     }
     

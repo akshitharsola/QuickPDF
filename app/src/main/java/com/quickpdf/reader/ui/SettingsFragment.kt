@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.quickpdf.reader.ui
 
 import android.app.AlertDialog
@@ -70,6 +72,8 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         try {
             val packageInfo = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
             val versionName = packageInfo.versionName ?: "1.0.0"
+            // versionCode available if needed in future
+            @Suppress("UNUSED_VARIABLE")
             val versionCode = packageInfo.longVersionCode
             versionPreference?.summary = getString(R.string.current_version, versionName)
         } catch (e: Exception) {
@@ -78,6 +82,7 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     }
 
     private fun checkForUpdatesManually() {
+        @Suppress("DEPRECATION")
         val progressDialog = createProgressDialog()
         progressDialog.show()
 
@@ -238,16 +243,19 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
             "auto_check_updates" -> {
+                @Suppress("UNUSED_VARIABLE")
                 val enabled = sharedPreferences?.getBoolean(key, true) ?: true
                 // You can add logic here to enable/disable background update checking
             }
             "night_mode_default" -> {
                 // Handle night mode preference change
+                @Suppress("UNUSED_VARIABLE")
                 val enabled = sharedPreferences?.getBoolean(key, false) ?: false
                 // You might want to apply this change globally
             }
             "high_quality_rendering" -> {
                 // Handle rendering quality preference change
+                @Suppress("UNUSED_VARIABLE")
                 val enabled = sharedPreferences?.getBoolean(key, true) ?: true
                 // You might want to notify other components about this change
             }

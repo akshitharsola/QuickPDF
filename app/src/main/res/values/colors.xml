@@ -35,4 +35,5 @@
     <!-- Custom colors -->
     <color name="pdf_background">#F5F5F5</color>
     <color name="pdf_background_night">#121212</color>
+    <color name="black_60">#99000000</color>
 </resources>
