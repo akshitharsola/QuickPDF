@@ -310,6 +310,20 @@ class PdfPageAdapter {
 - **Thread-Safe Implementation**: Bulletproof concurrency handling
 - **User-Centric Focus**: Optimizations targeted at user experience pain points
 
+## 📱 Distribution & Update Policy
+
+### Consistent Application Signing
+- **GitHub Releases**: All future releases will use consistent signing keys for seamless updates
+- **Update Process**: Users can directly install new versions over existing installations
+- **No Uninstall Required**: Consistent signing eliminates the need for manual uninstallation
+- **Version Continuity**: Smooth upgrade path from v1.2 onwards
+
+### Release Standards
+- **Dual APK Distribution**: Both debug and release APKs provided for all versions
+- **GitHub as Primary Channel**: Official distribution through GitHub releases
+- **Consistent Naming**: `QuickPDF-vX.Y-debug.apk` and `QuickPDF-vX.Y-release.apk`
+- **Universal Architecture**: Single APK supports all Android device architectures
+
 ## 🎉 Performance Mission Accomplished
 
 QuickPDF now delivers professional-grade PDF viewing performance that rivals native document viewers. Users can interact with complex PDF documents smoothly and responsively, with confidence that the app will remain stable and performant regardless of document size or interaction intensity.
