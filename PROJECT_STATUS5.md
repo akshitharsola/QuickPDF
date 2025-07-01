@@ -312,17 +312,41 @@ class PdfPageAdapter {
 
 ## 📱 Distribution & Update Policy
 
-### Consistent Application Signing
-- **GitHub Releases**: All future releases will use consistent signing keys for seamless updates
-- **Update Process**: Users can directly install new versions over existing installations
-- **No Uninstall Required**: Consistent signing eliminates the need for manual uninstallation
-- **Version Continuity**: Smooth upgrade path from v1.2 onwards
+### 🔑 **OFFICIAL SIGNING STRATEGY: DEBUG SIGNING**
+
+**Strategic Decision**: QuickPDF uses **debug signing** for all GitHub releases to ensure maximum compatibility and seamless updates.
+
+#### Why Debug Signing?
+- ✅ **Universal Compatibility**: Works across all Android devices and development environments
+- ✅ **Zero Update Issues**: Guaranteed seamless updates without signature conflicts
+- ✅ **Simplified Distribution**: No complex keystore management required
+- ✅ **GitHub Optimized**: Perfect for GitHub-based distribution model
+- ✅ **Clean Start**: v1.2 establishes consistent signing from day one
+
+#### Signing Implementation
+- **All Release APKs**: Use standard Android debug signing
+- **Consistent Signature**: Same debug key across all versions for seamless updates
+- **No Production Keystore**: Eliminates keystore management complexity
+- **Future-Proof**: Can transition to production signing for Play Store if needed
+
+### Application Update Policy
+- **Seamless Updates**: Users can directly install new versions over existing installations
+- **No Uninstall Required**: Debug signing consistency eliminates installation conflicts
+- **Version Continuity**: Smooth upgrade path guaranteed from v1.2 onwards
+- **Installation Method**: Direct APK installation with "Install from Unknown Sources" enabled
 
 ### Release Standards
-- **Dual APK Distribution**: Both debug and release APKs provided for all versions
+- **Primary APK**: `QuickPDF-vX.Y-release.apk` (debug-signed, optimized build)
+- **Debug APK**: `QuickPDF-vX.Y-debug.apk` (debug-signed, with logging)
 - **GitHub as Primary Channel**: Official distribution through GitHub releases
-- **Consistent Naming**: `QuickPDF-vX.Y-debug.apk` and `QuickPDF-vX.Y-release.apk`
 - **Universal Architecture**: Single APK supports all Android device architectures
+- **Consistent Naming**: Standardized naming convention for all releases
+
+### Distribution Channel Strategy
+- **Primary**: GitHub Releases (debug-signed APKs)
+- **Target Users**: Power users, developers, beta testers
+- **Installation**: Direct APK installation via file manager
+- **Future Option**: Google Play Store (would require separate production-signed builds)
 
 ## 🎉 Performance Mission Accomplished
 

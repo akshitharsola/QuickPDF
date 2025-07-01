@@ -17,18 +17,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        create("release") {
-            val keystoreFile = rootProject.file("quickpdf-release.keystore")
-            if (keystoreFile.exists()) {
-                storeFile = keystoreFile
-                storePassword = "quickpdf123"
-                keyAlias = "quickpdf"
-                keyPassword = "quickpdf123"
-            }
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -36,7 +24,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            // Use debug signing for consistent GitHub distribution
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
