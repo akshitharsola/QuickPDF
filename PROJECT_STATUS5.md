@@ -312,28 +312,30 @@ class PdfPageAdapter {
 
 ## 📱 Distribution & Update Policy
 
-### 🔑 **OFFICIAL SIGNING STRATEGY: DEBUG SIGNING**
+### 🔑 **OFFICIAL SIGNING STRATEGY: ANDROID DEBUG KEY**
 
-**Strategic Decision**: QuickPDF uses **debug signing** for all GitHub releases to ensure maximum compatibility and seamless updates.
+**Strategic Decision**: QuickPDF exclusively uses **Android debug signing** for all GitHub releases to ensure maximum compatibility and seamless updates.
 
-#### Why Debug Signing?
+#### Why Android Debug Key?
 - ✅ **Universal Compatibility**: Works across all Android devices and development environments
 - ✅ **Zero Update Issues**: Guaranteed seamless updates without signature conflicts
 - ✅ **Simplified Distribution**: No complex keystore management required
-- ✅ **GitHub Optimized**: Perfect for GitHub-based distribution model
+- ✅ **GitHub Optimized**: Perfect for GitHub-only distribution model
 - ✅ **Clean Start**: v1.2 establishes consistent signing from day one
 
-#### Signing Implementation
-- **All Release APKs**: Use standard Android debug signing
-- **Consistent Signature**: Same debug key across all versions for seamless updates
-- **No Production Keystore**: Eliminates keystore management complexity
-- **Future-Proof**: Can transition to production signing for Play Store if needed
+#### Technical Implementation
+- **Signing Method**: Standard Android debug key (same across all Android SDK installations)
+- **Release Configuration**: `signingConfig = signingConfigs.getByName("debug")`
+- **Consistent Signature**: Identical debug signature across all versions and environments
+- **No Custom Keystore**: Uses Android SDK default debug.keystore
+- **GitHub Exclusive**: Designed specifically for GitHub-based distribution
 
 ### Application Update Policy
 - **Seamless Updates**: Users can directly install new versions over existing installations
 - **No Uninstall Required**: Debug signing consistency eliminates installation conflicts
 - **Version Continuity**: Smooth upgrade path guaranteed from v1.2 onwards
 - **Installation Method**: Direct APK installation with "Install from Unknown Sources" enabled
+- **Clean Release History**: All previous releases removed to eliminate signing confusion
 
 ### Release Standards
 - **Primary APK**: `QuickPDF-vX.Y-release.apk` (debug-signed, optimized build)
@@ -343,10 +345,18 @@ class PdfPageAdapter {
 - **Consistent Naming**: Standardized naming convention for all releases
 
 ### Distribution Channel Strategy
-- **Primary**: GitHub Releases (debug-signed APKs)
-- **Target Users**: Power users, developers, beta testers
-- **Installation**: Direct APK installation via file manager
-- **Future Option**: Google Play Store (would require separate production-signed builds)
+- **Exclusive Channel**: GitHub Releases ONLY
+- **No Play Store**: QuickPDF will NOT be published to Google Play Store or other app stores
+- **Target Users**: Developers, power users, open-source enthusiasts
+- **Installation Method**: Direct APK installation with sideloading enabled
+- **Distribution Philosophy**: GitHub-native, developer-focused distribution model
+
+#### Why GitHub-Only Distribution?
+- ✅ **Full Control**: Complete control over release timing and content
+- ✅ **No Store Restrictions**: Freedom from app store policies and review processes
+- ✅ **Developer Audience**: Perfect fit for GitHub's technical user base
+- ✅ **Open Source Philosophy**: Aligns with transparent, community-driven development
+- ✅ **Simplified Signing**: Debug signing is optimal for this distribution model
 
 ## 🎉 Performance Mission Accomplished
 
