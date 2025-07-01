@@ -81,21 +81,7 @@ class PdfViewerActivity : AppCompatActivity() {
             adapter = pdfPageAdapter
             orientation = ViewPager2.ORIENTATION_HORIZONTAL
             
-            // Reduce sensitivity to prevent accidental page turns during zooming
-            (getChildAt(0) as? androidx.recyclerview.widget.RecyclerView)?.let { recyclerView ->
-                recyclerView.addOnItemTouchListener(object : androidx.recyclerview.widget.RecyclerView.SimpleOnItemTouchListener() {
-                    override fun onInterceptTouchEvent(rv: androidx.recyclerview.widget.RecyclerView, e: android.view.MotionEvent): Boolean {
-                        // Check if any page is zoomed in - if so, disable ViewPager swiping
-                        val currentView = getCurrentZoomableView()
-                        val isZoomedIn = currentView?.let { view ->
-                            view.getCurrentScale() > (view.getOriginalScale() + 0.1f)
-                        } ?: false
-                        
-                        // When zoomed in, prevent ViewPager from intercepting touch events
-                        return isZoomedIn
-                    }
-                })
-            }
+            // Optimized touch handling - let ProfessionalZoomableImageView handle this
             
             registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageSelected(position: Int) {
@@ -104,6 +90,8 @@ class PdfViewerActivity : AppCompatActivity() {
                     updatePageIndicator(position + 1)
                     // Save current page for orientation changes
                     savedCurrentPage = position
+                    // Trigger preloading of adjacent pages for smoother swipes
+                    pdfPageAdapter.preloadAdjacentPages(position)
                 }
             })
         }

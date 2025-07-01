@@ -7,11 +7,14 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 
 class PdfRendererUtil {
     
@@ -19,6 +22,17 @@ class PdfRendererUtil {
     private var parcelFileDescriptor: ParcelFileDescriptor? = null
     private var currentPage: PdfRenderer.Page? = null
     private var tempFile: File? = null
+    
+    // Performance optimizations
+    private val renderMutex = Mutex()
+    private val pageDimensionsCache = ConcurrentHashMap<Int, Pair<Int, Int>>()
+    private val aspectRatioCache = ConcurrentHashMap<String, Float>()
+    private var cachedScreenWidth = 0
+    private var cachedScreenHeight = 0
+    
+    // Maximum bitmap dimensions to prevent OOM
+    private val MAX_BITMAP_WIDTH = 2048
+    private val MAX_BITMAP_HEIGHT = 2048
     
     suspend fun openPdf(context: Context, uri: Uri): Boolean = withContext(Dispatchers.IO) {
         // Retry mechanism for PDF opening reliability
@@ -189,58 +203,104 @@ class PdfRendererUtil {
     
     fun getPageCount(): Int = pdfRenderer?.pageCount ?: 0
     
-    suspend fun renderPage(pageIndex: Int, width: Int, height: Int): Bitmap? = withContext(Dispatchers.IO) {
-        try {
-            val renderer = pdfRenderer ?: return@withContext null
-            if (pageIndex < 0 || pageIndex >= renderer.pageCount) return@withContext null
-            
-            currentPage?.close()
-            currentPage = renderer.openPage(pageIndex)
-            
-            val page = currentPage ?: return@withContext null
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            bitmap
-        } catch (e: Exception) {
-            null
+    suspend fun renderPage(pageIndex: Int, width: Int, height: Int): Bitmap? = 
+        renderMutex.withLock {
+            withContext(Dispatchers.IO) {
+                try {
+                    val renderer = pdfRenderer ?: return@withContext null
+                    if (pageIndex < 0 || pageIndex >= renderer.pageCount) return@withContext null
+                    
+                    // Validate dimensions
+                    val safeWidth = width.coerceAtMost(MAX_BITMAP_WIDTH)
+                    val safeHeight = height.coerceAtMost(MAX_BITMAP_HEIGHT)
+                    
+                    if (safeWidth <= 0 || safeHeight <= 0) {
+                        return@withContext null
+                    }
+                    
+                    currentPage?.close()
+                    currentPage = renderer.openPage(pageIndex)
+                    
+                    val page = currentPage ?: return@withContext null
+                    val bitmap = Bitmap.createBitmap(safeWidth, safeHeight, Bitmap.Config.ARGB_8888)
+                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    bitmap
+                } catch (e: OutOfMemoryError) {
+                    System.gc()
+                    null
+                } catch (e: Exception) {
+                    null
+                }
+            }
         }
-    }
     
-    suspend fun renderPageWithAspectRatio(pageIndex: Int, maxWidth: Int, maxHeight: Int): Bitmap? = withContext(Dispatchers.IO) {
-        try {
-            val renderer = pdfRenderer ?: return@withContext null
-            if (pageIndex < 0 || pageIndex >= renderer.pageCount) return@withContext null
-            
-            currentPage?.close()
-            currentPage = renderer.openPage(pageIndex)
-            
-            val page = currentPage ?: return@withContext null
-            val pageWidth = page.width
-            val pageHeight = page.height
-            
-            val widthRatio = maxWidth.toFloat() / pageWidth
-            val heightRatio = maxHeight.toFloat() / pageHeight
-            val ratio = minOf(widthRatio, heightRatio)
-            
-            val renderWidth = (pageWidth * ratio).toInt()
-            val renderHeight = (pageHeight * ratio).toInt()
-            
-            val bitmap = Bitmap.createBitmap(renderWidth, renderHeight, Bitmap.Config.ARGB_8888)
-            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            bitmap
-        } catch (e: Exception) {
-            null
+    suspend fun renderPageWithAspectRatio(pageIndex: Int, maxWidth: Int, maxHeight: Int): Bitmap? = 
+        renderMutex.withLock {
+            withContext(Dispatchers.IO) {
+                try {
+                    val renderer = pdfRenderer ?: return@withContext null
+                    if (pageIndex < 0 || pageIndex >= renderer.pageCount) return@withContext null
+                    
+                    // Get cached dimensions or calculate once
+                    val (pageWidth, pageHeight) = pageDimensionsCache[pageIndex] ?: run {
+                        currentPage?.close()
+                        currentPage = renderer.openPage(pageIndex)
+                        val page = currentPage ?: return@withContext null
+                        val dims = Pair(page.width, page.height)
+                        pageDimensionsCache[pageIndex] = dims
+                        dims
+                    }
+                    
+                    // Use cached aspect ratio if available
+                    val cacheKey = "${pageWidth}x${pageHeight}_${maxWidth}x${maxHeight}"
+                    val ratio = aspectRatioCache[cacheKey] ?: run {
+                        val widthRatio = maxWidth.toFloat() / pageWidth
+                        val heightRatio = maxHeight.toFloat() / pageHeight
+                        val calculatedRatio = minOf(widthRatio, heightRatio)
+                        aspectRatioCache[cacheKey] = calculatedRatio
+                        calculatedRatio
+                    }
+                    
+                    val renderWidth = (pageWidth * ratio).toInt().coerceAtMost(MAX_BITMAP_WIDTH)
+                    val renderHeight = (pageHeight * ratio).toInt().coerceAtMost(MAX_BITMAP_HEIGHT)
+                    
+                    // Validate bitmap dimensions
+                    if (renderWidth <= 0 || renderHeight <= 0) {
+                        return@withContext null
+                    }
+                    
+                    // Ensure we have the correct page open
+                    if (currentPage == null) {
+                        currentPage = renderer.openPage(pageIndex)
+                    }
+                    
+                    val page = currentPage ?: return@withContext null
+                    val bitmap = Bitmap.createBitmap(renderWidth, renderHeight, Bitmap.Config.ARGB_8888)
+                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    bitmap
+                } catch (e: OutOfMemoryError) {
+                    System.gc()
+                    null
+                } catch (e: Exception) {
+                    null
+                }
+            }
         }
-    }
     
     fun getPageDimensions(pageIndex: Int): Pair<Int, Int>? {
         return try {
+            // Return cached dimensions if available
+            pageDimensionsCache[pageIndex]?.let { return it }
+            
             val renderer = pdfRenderer ?: return null
             if (pageIndex < 0 || pageIndex >= renderer.pageCount) return null
             
             val page = renderer.openPage(pageIndex)
             val dimensions = Pair(page.width, page.height)
             page.close()
+            
+            // Cache the dimensions
+            pageDimensionsCache[pageIndex] = dimensions
             dimensions
         } catch (e: Exception) {
             null
@@ -255,6 +315,10 @@ class PdfRendererUtil {
             pdfRenderer = null
             parcelFileDescriptor?.close()
             parcelFileDescriptor = null
+            
+            // Clear caches
+            pageDimensionsCache.clear()
+            aspectRatioCache.clear()
             
             // Clean up temporary file if it exists
             tempFile?.let { file ->

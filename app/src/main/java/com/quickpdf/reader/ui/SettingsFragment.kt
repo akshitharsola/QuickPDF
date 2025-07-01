@@ -74,7 +74,12 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
             val versionName = packageInfo.versionName ?: "1.0.0"
             // versionCode available if needed in future
             @Suppress("UNUSED_VARIABLE")
-            val versionCode = packageInfo.longVersionCode
+            val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            }
             versionPreference?.summary = getString(R.string.current_version, versionName)
         } catch (e: Exception) {
             versionPreference?.summary = getString(R.string.current_version, "1.0.0")
@@ -174,7 +179,12 @@ class SettingsFragment : PreferenceFragmentCompat(), SharedPreferences.OnSharedP
         try {
             val packageInfo = requireContext().packageManager.getPackageInfo(requireContext().packageName, 0)
             val versionName = packageInfo.versionName ?: "1.0.0"
-            val versionCode = packageInfo.longVersionCode
+            val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            }
             val packageName = packageInfo.packageName
             
             val message = """
