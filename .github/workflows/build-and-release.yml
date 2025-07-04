@@ -108,9 +108,18 @@ jobs:
             -PQUICKPDF_KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD }}" \
             -PQUICKPDF_KEY_ALIAS="${{ secrets.KEY_ALIAS }}" \
             -PQUICKPDF_KEY_PASSWORD="${{ secrets.KEY_PASSWORD }}"
+          
+          # Verify the APK was actually signed
+          if [[ -f app/build/outputs/apk/release/app-release.apk ]]; then
+            echo "✅ Signed release APK created"
+          else
+            echo "❌ Signed APK creation failed"
+            exit 1
+          fi
         else
-          echo "⚠️ Building unsigned release APK (no keystore available)"
-          ./gradlew assembleRelease -x lintRelease
+          echo "❌ Keystore setup failed - cannot build unsigned release APK"
+          echo "🔧 Please check GitHub secrets: KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD"
+          exit 1
         fi
         
     - name: Verify APK Signing
@@ -148,15 +157,13 @@ jobs:
         # Copy and rename debug APK
         cp app/build/outputs/apk/debug/app-debug.apk "release-artifacts/QuickPDF-v$VERSION-debug.apk"
         
-        # Copy and rename release APK
-        if [[ "${{ steps.verify_signing.outputs.signed }}" == "true" ]]; then
+        # Only copy properly signed release APK
+        if [[ -f app/build/outputs/apk/release/app-release.apk ]]; then
           cp app/build/outputs/apk/release/app-release.apk "release-artifacts/QuickPDF-v$VERSION-release.apk"
+          echo "✅ Signed release APK copied successfully"
         else
-          if [[ -f app/build/outputs/apk/release/app-release.apk ]]; then
-            cp app/build/outputs/apk/release/app-release.apk "release-artifacts/QuickPDF-v$VERSION-release-unsigned.apk"
-          else
-            echo "❌ No release APK found to copy"
-          fi
+          echo "❌ No signed release APK found - build may have failed"
+          exit 1
         fi
         
     - name: Generate Release Notes
@@ -197,11 +204,7 @@ jobs:
         ---
         
         **Build Info**: 
-        $(if [[ "${{ steps.verify_signing.outputs.signed }}" == "true" ]]; then
-          echo "✅ **Signed APK** - Production ready with consistent signature for seamless updates"
-        else
-          echo "⚠️ **Unsigned APK** - For testing only. Set up keystore secrets for production signing"
-        fi)
+        ✅ **Signed APK** - Production ready with consistent signature for seamless updates
         EOF
         
         echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
