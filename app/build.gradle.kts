@@ -17,15 +17,41 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            // Production keystore configuration
+            storeFile = file(findProperty("QUICKPDF_KEYSTORE_FILE") ?: "quickpdf-production.keystore")
+            storePassword = findProperty("QUICKPDF_KEYSTORE_PASSWORD") as String? ?: "QuickPDF2024@Secure!"
+            keyAlias = findProperty("QUICKPDF_KEY_ALIAS") as String? ?: "quickpdf-prod"
+            keyPassword = findProperty("QUICKPDF_KEY_PASSWORD") as String? ?: "QuickPDF2024@Secure!"
+            
+            // Enable v1 and v2 signing for maximum compatibility
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+        }
+    }
+
     buildTypes {
-        release {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            isDebuggable = true
             isMinifyEnabled = false
+            // Use debug signing for development
+            signingConfig = signingConfigs.getByName("debug")
+        }
+        
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Use debug signing for consistent GitHub distribution
-            signingConfig = signingConfigs.getByName("debug")
+            // Use production signing for release builds
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
