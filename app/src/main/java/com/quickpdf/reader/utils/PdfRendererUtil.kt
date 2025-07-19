@@ -5,6 +5,10 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import com.itextpdf.kernel.pdf.PdfDocument
+import com.itextpdf.kernel.pdf.PdfReader
+import com.itextpdf.kernel.pdf.PdfWriter
+import com.itextpdf.kernel.pdf.ReaderProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -22,6 +26,8 @@ class PdfRendererUtil {
     private var parcelFileDescriptor: ParcelFileDescriptor? = null
     private var currentPage: PdfRenderer.Page? = null
     private var tempFile: File? = null
+    private var unlockedTempFile: File? = null
+    val passwordHandler = PdfPasswordHandler()
     
     // Performance optimizations
     private val renderMutex = Mutex()
@@ -34,7 +40,186 @@ class PdfRendererUtil {
     private val MAX_BITMAP_WIDTH = 2048
     private val MAX_BITMAP_HEIGHT = 2048
     
+    /**
+     * Checks if a PDF is password-protected using iText7
+     */
+    suspend fun isPdfPasswordProtected(context: Context, uri: Uri): Boolean {
+        return passwordHandler.isPdfPasswordProtected(context, uri)
+    }
+    
+    /**
+     * Checks if a PDF file is password-protected
+     */
+    suspend fun isPdfPasswordProtected(filePath: String): Boolean {
+        return passwordHandler.isPdfPasswordProtected(filePath)
+    }
+    
+    /**
+     * Opens a password-protected PDF with the provided password
+     */
+    suspend fun openPdfWithPassword(context: Context, uri: Uri, password: String): Boolean = withContext(Dispatchers.IO) {
+        return@withContext try {
+            closePdf()
+            
+            android.util.Log.d("PdfRendererUtil", "Attempting to unlock PDF with provided password using iText7")
+            
+            // First validate that the password is correct
+            val isValidPassword = passwordHandler.validatePdfPassword(context, uri, password)
+            if (!isValidPassword) {
+                android.util.Log.e("PdfRendererUtil", "Invalid password provided")
+                return@withContext false
+            }
+            
+            android.util.Log.d("PdfRendererUtil", "Password validated successfully")
+            
+            // Try to unlock with iText7
+            unlockedTempFile = passwordHandler.unlockPdfWithPassword(context, uri, password)
+            if (unlockedTempFile == null) {
+                android.util.Log.e("PdfRendererUtil", "iText7 failed to unlock PDF - this might be an owner password issue")
+                // If unlock fails but password is valid, try creating a copy with password
+                try {
+                    unlockedTempFile = createPasswordProtectedCopy(context, uri, password)
+                    if (unlockedTempFile == null) {
+                        android.util.Log.e("PdfRendererUtil", "Failed to create password-protected copy")
+                        return@withContext false
+                    }
+                    android.util.Log.d("PdfRendererUtil", "Created password-protected copy successfully")
+                } catch (e: Exception) {
+                    android.util.Log.e("PdfRendererUtil", "Error creating password-protected copy", e)
+                    return@withContext false
+                }
+            }
+            
+            android.util.Log.d("PdfRendererUtil", "PDF unlocked successfully, opening temporary file")
+            
+            // Open the unlocked PDF using existing method (but preserve the temp file reference)
+            val tempFilePath = unlockedTempFile!!.absolutePath
+            val tempFileToPreserve = unlockedTempFile
+            unlockedTempFile = null // Temporarily clear to prevent closePdf() from deleting it
+            val success = openPdf(tempFilePath)
+            unlockedTempFile = tempFileToPreserve // Restore reference
+            if (!success) {
+                android.util.Log.e("PdfRendererUtil", "Failed to open unlocked PDF file")
+                // Clean up on failure
+                unlockedTempFile?.delete()
+                unlockedTempFile = null
+                return@withContext false
+            }
+            
+            android.util.Log.d("PdfRendererUtil", "Password-protected PDF opened successfully")
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("PdfRendererUtil", "Error opening password-protected PDF", e)
+            unlockedTempFile?.delete()
+            unlockedTempFile = null
+            false
+        }
+    }
+    
+    /**
+     * Creates a copy of a password-protected PDF that can be accessed
+     */
+    private suspend fun createPasswordProtectedCopy(context: Context, uri: Uri, password: String): File? = withContext(Dispatchers.IO) {
+        return@withContext try {
+            android.util.Log.d("PdfRendererUtil", "Creating decrypted copy using alternative approach")
+            
+            // Try using PdfReader with unethical reading enabled from the start
+            val inputStream = context.contentResolver.openInputStream(uri)
+            inputStream?.use { stream ->
+                try {
+                    // First try: Standard reader with password, then copy to remove encryption
+                    val readerProperties = ReaderProperties().setPassword(password.toByteArray())
+                    val reader = PdfReader(stream, readerProperties)
+                    
+                    // Force unethical reading to bypass owner password restrictions
+                    reader.setUnethicalReading(true)
+                    
+                    val tempFile = File.createTempFile("decrypted_pdf_", ".pdf", context.cacheDir)
+                    val writer = PdfWriter(FileOutputStream(tempFile))
+                    val pdfDoc = PdfDocument(reader, writer)
+                    
+                    android.util.Log.d("PdfRendererUtil", "Successfully opened PDF with ${pdfDoc.numberOfPages} pages")
+                    pdfDoc.close()
+                    
+                    android.util.Log.d("PdfRendererUtil", "Decrypted copy created: ${tempFile.absolutePath}")
+                    tempFile
+                } catch (e: Exception) {
+                    android.util.Log.e("PdfRendererUtil", "Alternative decryption approach failed: ${e.message}")
+                    
+                    // Final fallback: try without password but with unethical reading
+                    try {
+                        val newInputStream = context.contentResolver.openInputStream(uri)
+                        newInputStream?.use { retryStream ->
+                            val reader = PdfReader(retryStream)
+                            reader.setUnethicalReading(true)
+                            
+                            val tempFile = File.createTempFile("unethical_pdf_", ".pdf", context.cacheDir)
+                            val writer = PdfWriter(FileOutputStream(tempFile))
+                            val pdfDoc = PdfDocument(reader, writer)
+                            
+                            android.util.Log.d("PdfRendererUtil", "Unethical reading approach succeeded with ${pdfDoc.numberOfPages} pages")
+                            pdfDoc.close()
+                            
+                            tempFile
+                        }
+                    } catch (finalException: Exception) {
+                        android.util.Log.e("PdfRendererUtil", "All decryption approaches failed: ${finalException.message}")
+                        null
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PdfRendererUtil", "Error creating decrypted copy", e)
+            null
+        }
+    }
+    
+    /**
+     * Opens a password-protected PDF file with the provided password
+     */
+    suspend fun openPdfWithPassword(filePath: String, password: String, context: Context): Boolean = withContext(Dispatchers.IO) {
+        return@withContext try {
+            closePdf()
+            
+            android.util.Log.d("PdfRendererUtil", "Attempting to unlock PDF file with provided password")
+            
+            // Try to unlock the PDF directly - if this succeeds, the password is correct
+            unlockedTempFile = passwordHandler.unlockPdfWithPassword(filePath, password, context)
+            if (unlockedTempFile == null) {
+                android.util.Log.e("PdfRendererUtil", "Failed to unlock PDF with password - password may be incorrect")
+                return@withContext false
+            }
+            
+            android.util.Log.d("PdfRendererUtil", "PDF unlocked successfully, opening temporary file")
+            
+            // Open the unlocked PDF using existing method
+            val success = openPdf(unlockedTempFile!!.absolutePath)
+            if (!success) {
+                android.util.Log.e("PdfRendererUtil", "Failed to open unlocked PDF file")
+                // Clean up on failure
+                unlockedTempFile?.delete()
+                unlockedTempFile = null
+                return@withContext false
+            }
+            
+            android.util.Log.d("PdfRendererUtil", "Password-protected PDF opened successfully")
+            true
+        } catch (e: Exception) {
+            android.util.Log.e("PdfRendererUtil", "Error opening password-protected PDF", e)
+            unlockedTempFile?.delete()
+            unlockedTempFile = null
+            false
+        }
+    }
+    
     suspend fun openPdf(context: Context, uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        // First, check if the PDF is password-protected using iText7
+        val isPasswordProtected = passwordHandler.isPdfPasswordProtected(context, uri)
+        if (isPasswordProtected) {
+            android.util.Log.d("PdfRendererUtil", "PDF is password-protected, cannot open without password")
+            return@withContext false
+        }
+        
         // Retry mechanism for PDF opening reliability
         var lastException: Exception? = null
         repeat(3) { attempt ->
@@ -193,10 +378,21 @@ class PdfRendererUtil {
             val file = File(filePath)
             if (!file.exists()) return@withContext false
             
+            // First, check if the PDF is password-protected
+            val isPasswordProtected = passwordHandler.isPdfPasswordProtected(filePath)
+            android.util.Log.d("PdfRendererUtil", "Opening PDF: $filePath, isPasswordProtected: $isPasswordProtected")
+            if (isPasswordProtected) {
+                android.util.Log.e("PdfRendererUtil", "Decrypted temp file is still detected as password-protected! This shouldn't happen.")
+                android.util.Log.e("PdfRendererUtil", "File exists: ${file.exists()}, File size: ${if (file.exists()) file.length() else "N/A"}")
+                return@withContext false
+            }
+            
             parcelFileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
             pdfRenderer = PdfRenderer(parcelFileDescriptor!!)
+            android.util.Log.d("PdfRendererUtil", "PDF opened successfully with ${pdfRenderer?.pageCount ?: 0} pages")
             true
         } catch (e: Exception) {
+            android.util.Log.e("PdfRendererUtil", "Exception opening PDF: ${e.message}", e)
             false
         }
     }
@@ -327,6 +523,15 @@ class PdfRendererUtil {
                     android.util.Log.d("PdfRendererUtil", "Temporary file cleanup: ${if (deleted) "success" else "failed"}")
                 }
                 tempFile = null
+            }
+            
+            // Clean up unlocked temporary file if it exists
+            unlockedTempFile?.let { file ->
+                if (file.exists()) {
+                    val deleted = file.delete()
+                    android.util.Log.d("PdfRendererUtil", "Unlocked temporary file cleanup: ${if (deleted) "success" else "failed"}")
+                }
+                unlockedTempFile = null
             }
         } catch (e: IOException) {
             android.util.Log.w("PdfRendererUtil", "Error during PDF cleanup", e)

@@ -54,6 +54,13 @@
     <string name="update_later">Update Later</string>
     <string name="current_version">Current Version: %1$s</string>
     
+    <!-- Password Protection -->
+    <string name="password_protected_pdf">Password Protected PDF</string>
+    <string name="enter_pdf_password">This PDF is password protected. Please enter the password to view it.</string>
+    <string name="password">Password</string>
+    <string name="incorrect_password">Incorrect password. Please try again.</string>
+    <string name="unlock">Unlock</string>
+    
     <!-- General -->
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>

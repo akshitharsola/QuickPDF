@@ -64,6 +64,17 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    
+    packaging {
+        resources {
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/NOTICE.txt"
+            excludes += "META-INF/INDEX.LIST"
+        }
+    }
 }
 
 dependencies {
@@ -85,6 +96,12 @@ dependencies {
     
     // PhotoView for professional zoom and pan functionality
     implementation("com.github.chrisbanes:PhotoView:2.3.0")
+    
+    // PDF password support with iText7
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    implementation("com.itextpdf:kernel:7.2.5")
+    implementation("com.itextpdf:io:7.2.5")
+    implementation("com.itextpdf:layout:7.2.5")
     
     // Room database - temporarily disabled for initial testing
     // implementation(libs.androidx.room.runtime)

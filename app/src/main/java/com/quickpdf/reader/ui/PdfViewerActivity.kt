@@ -1,5 +1,6 @@
 package com.quickpdf.reader.ui
 
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,7 @@ import com.quickpdf.reader.R
 import com.quickpdf.reader.databinding.ActivityPdfViewerBinding
 import com.quickpdf.reader.ui.adapters.PdfPageAdapter
 import com.quickpdf.reader.ui.custom.ProfessionalZoomableImageView
+import com.quickpdf.reader.ui.dialogs.PasswordDialog
 import com.quickpdf.reader.utils.FileUtil
 import com.quickpdf.reader.utils.PdfRendererUtil
 import kotlinx.coroutines.launch
@@ -33,6 +35,7 @@ class PdfViewerActivity : AppCompatActivity() {
     private val toolbarHandler = Handler(Looper.getMainLooper())
     private var toolbarHideRunnable: Runnable? = null
     private var savedCurrentPage = 0
+    private var passwordDialog: PasswordDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -166,7 +169,19 @@ class PdfViewerActivity : AppCompatActivity() {
                     return@launch
                 }
                 
-                val success = pdfRenderer.openPdf(this@PdfViewerActivity, uri)
+                // Try to open PDF normally (this will return false if password-protected)
+                var success = pdfRenderer.openPdf(this@PdfViewerActivity, uri)
+                
+                // If failed, check if it's password-protected
+                if (!success) {
+                    val isPasswordProtected = pdfRenderer.isPdfPasswordProtected(this@PdfViewerActivity, uri)
+                    if (isPasswordProtected) {
+                        android.util.Log.d("PdfViewerActivity", "PDF is password-protected, showing password dialog")
+                        binding.progressBar.visibility = View.GONE
+                        showPasswordDialog(uri)
+                        return@launch
+                    }
+                }
                 
                 if (success) {
                     val pageCount = pdfRenderer.getPageCount()
@@ -198,7 +213,7 @@ class PdfViewerActivity : AppCompatActivity() {
                     android.util.Log.d("PdfViewerActivity", "PDF viewer setup completed successfully")
                 } else {
                     android.util.Log.e("PdfViewerActivity", "Failed to open PDF file")
-                    showError("Failed to open PDF file. The file may be corrupted or password-protected.")
+                    showError("Failed to open PDF file. The file may be corrupted.")
                 }
             } catch (e: SecurityException) {
                 android.util.Log.e("PdfViewerActivity", "Security exception while loading PDF", e)
@@ -208,9 +223,18 @@ class PdfViewerActivity : AppCompatActivity() {
                 showError("File too large. Please try a smaller PDF file.")
             } catch (e: Exception) {
                 android.util.Log.e("PdfViewerActivity", "Exception while loading PDF: ${e.javaClass.simpleName}", e)
+                
+                // Check if it's a password-protected PDF
+                val isPasswordProtected = pdfRenderer.isPdfPasswordProtected(this@PdfViewerActivity, uri)
+                if (isPasswordProtected) {
+                    android.util.Log.d("PdfViewerActivity", "PDF is password-protected, showing password dialog")
+                    binding.progressBar.visibility = View.GONE
+                    showPasswordDialog(uri)
+                    return@launch
+                }
+                
                 val errorMessage = when {
                     e.message?.contains("corrupted") == true -> "The PDF file appears to be corrupted"
-                    e.message?.contains("password") == true -> "This PDF is password-protected and cannot be opened"
                     e.message?.contains("permission") == true -> "Permission denied accessing the file"
                     else -> "Error loading PDF: ${e.message ?: "Unknown error"}"
                 }
@@ -271,6 +295,72 @@ class PdfViewerActivity : AppCompatActivity() {
         toolbarHandler.postDelayed(toolbarHideRunnable!!, 3000)
     }
     
+    private fun showPasswordDialog(uri: Uri) {
+        passwordDialog = PasswordDialog(
+            context = this,
+            fileName = fileName,
+            onPasswordEntered = { password ->
+                handlePasswordEntered(uri, password)
+            },
+            onCancelled = {
+                showError("Password required to open this PDF")
+                passwordDialog = null
+            }
+        )
+        passwordDialog?.show()
+    }
+    
+    private fun handlePasswordEntered(uri: Uri, password: String) {
+        lifecycleScope.launch {
+            try {
+                binding.progressBar.visibility = View.VISIBLE
+                
+                val success = pdfRenderer.openPdfWithPassword(this@PdfViewerActivity, uri, password)
+                
+                if (success) {
+                    passwordDialog?.dismiss()
+                    passwordDialog = null
+                    
+                    val pageCount = pdfRenderer.getPageCount()
+                    android.util.Log.d("PdfViewerActivity", "Password-protected PDF opened successfully with $pageCount pages")
+                    
+                    if (pageCount <= 0) {
+                        android.util.Log.e("PdfViewerActivity", "PDF has no pages")
+                        showError("This PDF file appears to be empty or corrupted")
+                        return@launch
+                    }
+                    
+                    pdfViewerViewModel.setTotalPages(pageCount)
+                    pdfPageAdapter.setPageCount(pageCount)
+                    
+                    binding.progressBar.visibility = View.GONE
+                    binding.toolbar.visibility = View.VISIBLE
+                    
+                    updatePageIndicator(1)
+                    
+                    // Restore saved page position
+                    if (savedCurrentPage > 0 && savedCurrentPage < pageCount) {
+                        binding.viewPager.setCurrentItem(savedCurrentPage, false)
+                        updatePageIndicator(savedCurrentPage + 1)
+                        android.util.Log.d("PdfViewerActivity", "Restored to page: ${savedCurrentPage + 1}")
+                    }
+                    
+                    // Start with toolbar visible, then auto-hide after delay
+                    showToolbarTemporarily()
+                    android.util.Log.d("PdfViewerActivity", "Password-protected PDF viewer setup completed successfully")
+                } else {
+                    android.util.Log.e("PdfViewerActivity", "Invalid password provided")
+                    binding.progressBar.visibility = View.GONE
+                    passwordDialog?.showError(getString(R.string.incorrect_password))
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("PdfViewerActivity", "Error opening PDF with password", e)
+                binding.progressBar.visibility = View.GONE
+                passwordDialog?.showError("Error opening PDF: ${e.message}")
+            }
+        }
+    }
+    
     
     private fun getCurrentZoomableView(): ProfessionalZoomableImageView? {
         return try {
@@ -292,6 +382,8 @@ class PdfViewerActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         toolbarHideRunnable?.let { toolbarHandler.removeCallbacks(it) }
+        passwordDialog?.dismiss()
+        passwordDialog = null
         pdfPageAdapter.clearCache()
         pdfRenderer.closePdf()
     }
