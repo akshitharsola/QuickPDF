@@ -19,17 +19,9 @@ android {
 
     signingConfigs {
         create("release") {
-            // Production keystore configuration
-            storeFile = file(findProperty("QUICKPDF_KEYSTORE_FILE") ?: "quickpdf-production.keystore")
-            storePassword = findProperty("QUICKPDF_KEYSTORE_PASSWORD") as String? ?: "QuickPDF2024@Secure!"
-            keyAlias = findProperty("QUICKPDF_KEY_ALIAS") as String? ?: "quickpdf-prod"
-            keyPassword = findProperty("QUICKPDF_KEY_PASSWORD") as String? ?: "QuickPDF2024@Secure!"
-            
-            // Enable v1 and v2 signing for maximum compatibility
-            enableV1Signing = true
-            enableV2Signing = true
-            enableV3Signing = true
-            enableV4Signing = true
+            // Play Store keystore configuration - will be configured separately
+            // Keystore details should be provided via gradle.properties or environment variables
+            // For security, never commit keystore credentials to version control
         }
     }
 
@@ -50,8 +42,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Use debug signing for GitHub distribution compatibility
-            signingConfig = signingConfigs.getByName("debug")
+            // Signing will be configured for Play Store deployment
+            // signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

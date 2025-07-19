@@ -29,43 +29,30 @@
 -keep public class * extends android.content.BroadcastReceiver
 -keep public class * extends android.content.ContentProvider
 
-# iText7 PDF library rules
--keep class com.itextpdf.** { *; }
+# iText7 PDF library rules - optimized to keep only essential classes
+-keep class com.itextpdf.kernel.pdf.PdfReader { *; }
+-keep class com.itextpdf.kernel.pdf.PdfWriter { *; }
+-keep class com.itextpdf.kernel.pdf.PdfDocument { *; }
+-keep class com.itextpdf.kernel.pdf.ReaderProperties { *; }
+-keep class com.itextpdf.kernel.pdf.DocumentProperties { *; }
+-keep class com.itextpdf.kernel.exceptions.** { *; }
+-keep class com.itextpdf.io.exceptions.** { *; }
 -dontwarn com.itextpdf.**
+
+# Essential dontwarn rules for iText7 compatibility
 -dontwarn org.slf4j.**
 -dontwarn javax.xml.**
--dontwarn org.xml.**
 -dontwarn java.awt.**
 -dontwarn java.beans.**
 -dontwarn javax.swing.**
--dontwarn javax.imageio.**
--dontwarn java.util.prefs.**
--dontwarn java.lang.management.**
--dontwarn java.security.cert.**
--dontwarn java.security.spec.**
--dontwarn java.text.**
--dontwarn java.time.**
--dontwarn java.nio.file.**
--dontwarn java.util.concurrent.**
--dontwarn java.util.function.**
--dontwarn java.util.stream.**
--dontwarn java.util.regex.**
--dontwarn java.util.zip.**
--dontwarn java.io.**
--dontwarn java.lang.ref.**
--dontwarn java.lang.reflect.**
--dontwarn java.math.**
--dontwarn java.net.**
--dontwarn java.util.**
 
 # Keep classes that are referenced via reflection
 -keepclassmembers class ** {
     @com.itextpdf.** *;
 }
 
-# SLF4J logging framework (used by iText)
+# SLF4J logging framework (used by iText) - keep minimal
 -dontwarn org.slf4j.impl.StaticLoggerBinder
--keep class org.slf4j.** { *; }
+-keep class org.slf4j.Logger { *; }
+-keep class org.slf4j.LoggerFactory { *; }
 -dontwarn org.slf4j.**
-
-# Removed PDFBox rules due to AWT incompatibility with Android
