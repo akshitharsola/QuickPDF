@@ -50,8 +50,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Use production signing for release builds
-            signingConfig = signingConfigs.getByName("release")
+            // Use debug signing for GitHub distribution compatibility
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
